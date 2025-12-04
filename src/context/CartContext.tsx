@@ -1,91 +1,222 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { CartItem, Product, Order, OrderStatus } from '../types';
-import { MOCK_ORDERS } from '../data/mock';
+import { CartItem, Product, Order } from '../types';
+import { createOrderApi, fetchOrdersApi, CreateOrderParams } from '../services/orderApi';
+import { supabase } from '../lib/supabaseClient';
+import { useOrg } from './OrgContext';
 
 interface AppContextType {
     cart: CartItem[];
-    addToCart: (product: Product, quantity: number, notes?: string) => void;
-    removeFromCart: (cartId: string) => void;
-    updateQuantity: (cartId: string, delta: number) => void;
+    addToCart: (product: Product, quantity: number, notes?: string) => Promise<void>;
+    removeFromCart: (cartId: string) => Promise<void>;
+    updateQuantity: (cartId: string, delta: number) => Promise<void>;
     clearCart: () => void;
     cartTotal: number;
     orders: Order[];
-    createOrder: () => string; // returns new order ID
+    createOrder: (customerData?: any) => Promise<string>;
+    refreshOrders: () => Promise<void>;
+    // Shared Cart
+    sharedCartId: string | null;
+    createSharedCart: () => Promise<string>;
+    joinSharedCart: (cartId: string, name: string) => void;
+    guestName: string;
+    setGuestName: (name: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// Made children optional to fix "Property 'children' is missing" error in App.tsx
 export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const [cart, setCart] = useState<CartItem[]>([]);
-    const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS);
+    const [orders, setOrders] = useState<Order[]>([]);
+    const { org } = useOrg();
 
-    // Load cart from local storage on mount (mock persistence)
+    // Shared Cart State
+    const [sharedCartId, setSharedCartId] = useState<string | null>(null);
+    const [guestName, setGuestName] = useState<string>('Convidado');
+
+    const cartKey = `cart_${org.id}`;
+
+    // Load local cart from local storage on mount or when org changes
     useEffect(() => {
-        const savedCart = localStorage.getItem('foodtruck_cart');
+        if (sharedCartId) return; // Don't load local cart if in shared mode
+
+        const savedCart = localStorage.getItem(cartKey);
         if (savedCart) {
             try {
                 setCart(JSON.parse(savedCart));
             } catch (e) {
                 console.error("Failed to load cart", e);
             }
+        } else {
+            setCart([]);
         }
-    }, []);
+        refreshOrders();
+    }, [org.id, sharedCartId]);
 
-    // Save cart to local storage whenever it changes
+    // Save local cart to local storage whenever it changes
     useEffect(() => {
-        localStorage.setItem('foodtruck_cart', JSON.stringify(cart));
-    }, [cart]);
+        if (sharedCartId) return; // Don't save shared cart to local storage
+        localStorage.setItem(cartKey, JSON.stringify(cart));
+    }, [cart, cartKey, sharedCartId]);
 
-    const addToCart = (product: Product, quantity: number, notes: string = '') => {
-        setCart((prev) => {
-            const cartId = `${product.id}-${notes}`;
-            const existing = prev.find((item) => item.cartId === cartId);
+    // Realtime Subscription for Shared Cart
+    useEffect(() => {
+        if (!sharedCartId) return;
 
-            if (existing) {
-                return prev.map((item) =>
-                    item.cartId === cartId
-                        ? { ...item, quantity: item.quantity + quantity }
-                        : item
-                );
-            }
-
-            return [...prev, { ...product, quantity, notes, cartId }];
-        });
-    };
-
-    const removeFromCart = (cartId: string) => {
-        setCart((prev) => prev.filter((item) => item.cartId !== cartId));
-    };
-
-    const updateQuantity = (cartId: string, delta: number) => {
-        setCart((prev) =>
-            prev.map((item) => {
-                if (item.cartId === cartId) {
-                    const newQuantity = Math.max(1, item.quantity + delta);
-                    return { ...item, quantity: newQuantity };
+        const channel = supabase
+            .channel(`shared_cart:${sharedCartId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'shared_cart_items',
+                    filter: `cart_id=eq.${sharedCartId}`,
+                },
+                () => {
+                    // Refresh cart items on any change
+                    fetchSharedCartItems(sharedCartId);
                 }
-                return item;
+            )
+            .subscribe();
+
+        // Initial fetch
+        fetchSharedCartItems(sharedCartId);
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [sharedCartId]);
+
+    const fetchSharedCartItems = async (cartId: string) => {
+        const { data, error } = await supabase
+            .from('shared_cart_items')
+            .select('*')
+            .eq('cart_id', cartId);
+
+        if (error) {
+            console.error('Error fetching shared cart items:', error);
+            return;
+        }
+
+        // Map shared items to CartItem format
+        const mappedItems: CartItem[] = data.map((item: any) => ({
+            ...item.product_data,
+            quantity: item.quantity,
+            notes: item.notes,
+            cartId: item.id, // Use DB ID as cartId
+            addedBy: item.added_by_name
+        }));
+
+        setCart(mappedItems);
+    };
+
+    const refreshOrders = async () => {
+        try {
+            const data = await fetchOrdersApi();
+            setOrders(data);
+        } catch (error) {
+            console.error("Failed to fetch orders", error);
+        }
+    };
+
+    const createSharedCart = async () => {
+        const { data, error } = await supabase
+            .from('shared_carts')
+            .insert({
+                org_id: org.id,
+                status: 'open'
             })
-        );
+            .select()
+            .single();
+
+        if (error) throw error;
+        setSharedCartId(data.id);
+        setCart([]);
+        return data.id;
+    };
+
+    const joinSharedCart = (cartId: string, name: string) => {
+        setSharedCartId(cartId);
+        setGuestName(name);
+    };
+
+    const addToCart = async (product: Product, quantity: number, notes: string = '') => {
+        if (sharedCartId) {
+            // Insert into Supabase
+            const { error } = await supabase
+                .from('shared_cart_items')
+                .insert({
+                    cart_id: sharedCartId,
+                    product_id: product.id,
+                    quantity,
+                    notes,
+                    added_by_name: guestName,
+                    product_data: product
+                });
+
+            if (error) console.error('Error adding to shared cart:', error);
+        } else {
+            // Local Logic
+            setCart((prev) => {
+                const cartId = `${product.id}-${notes}`;
+                const existing = prev.find((item) => item.cartId === cartId);
+
+                if (existing) {
+                    return prev.map((item) =>
+                        item.cartId === cartId
+                            ? { ...item, quantity: item.quantity + quantity }
+                            : item
+                    );
+                }
+
+                return [...prev, { ...product, quantity, notes, cartId }];
+            });
+        }
+    };
+
+    const removeFromCart = async (cartId: string) => {
+        if (sharedCartId) {
+            await supabase.from('shared_cart_items').delete().eq('id', cartId);
+        } else {
+            setCart((prev) => prev.filter((item) => item.cartId !== cartId));
+        }
+    };
+
+    const updateQuantity = async (cartId: string, delta: number) => {
+        if (sharedCartId) {
+            const item = cart.find(i => i.cartId === cartId);
+            if (item) {
+                const newQty = Math.max(1, item.quantity + delta);
+                await supabase.from('shared_cart_items').update({ quantity: newQty }).eq('id', cartId);
+            }
+        } else {
+            setCart((prev) =>
+                prev.map((item) => {
+                    if (item.cartId === cartId) {
+                        const newQuantity = Math.max(1, item.quantity + delta);
+                        return { ...item, quantity: newQuantity };
+                    }
+                    return item;
+                })
+            );
+        }
     };
 
     const clearCart = () => setCart([]);
 
     const cartTotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
-    const createOrder = () => {
-        const newId = Math.floor(Math.random() * 10000).toString();
-        const newOrder: Order = {
-            id: newId,
-            date: new Date().toLocaleString('pt-BR', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' }),
-            status: OrderStatus.RECEIVED,
+    const createOrder = async (customerData?: any) => {
+        const params: CreateOrderParams = {
+            items: cart,
             total: cartTotal + 5.0, // + delivery fee
-            items: [...cart]
+            customer: customerData
         };
 
-        setOrders([newOrder, ...orders]);
+        const newId = await createOrderApi(params);
+
         clearCart();
+        refreshOrders();
         return newId;
     };
 
@@ -100,6 +231,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 cartTotal,
                 orders,
                 createOrder,
+                refreshOrders,
+                sharedCartId,
+                createSharedCart,
+                joinSharedCart,
+                guestName,
+                setGuestName
             }}
         >
             {children}

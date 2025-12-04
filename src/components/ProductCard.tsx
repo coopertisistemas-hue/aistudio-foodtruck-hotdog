@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Product } from '../types';
+import { useBrand } from '../hooks/useBrand';
 
 interface ProductCardProps {
     product: Product;
@@ -8,6 +9,7 @@ interface ProductCardProps {
 
 export const ProductCard = ({ product }: ProductCardProps) => {
     const navigate = useNavigate();
+    const brand = useBrand();
 
     return (
         <div
@@ -19,10 +21,11 @@ export const ProductCard = ({ product }: ProductCardProps) => {
                     <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark line-clamp-2">{product.description}</p>
                 </div>
                 <div className="flex items-center justify-between mt-3">
-                    <span className="text-primary font-bold text-lg">R$ {product.price.toFixed(2).replace('.', ',')}</span>
+                    <span className="font-bold text-lg" style={{ color: brand.primaryColor }}>R$ {product.price.toFixed(2).replace('.', ',')}</span>
                     <button
                         onClick={() => navigate(`/product/${product.id}`)}
-                        className="size-8 rounded-full bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/30 active:scale-95"
+                        className="size-8 rounded-full text-white flex items-center justify-center shadow-lg active:scale-95"
+                        style={{ backgroundColor: brand.primaryColor, boxShadow: `0 10px 15px -3px ${brand.primaryColor}40` }}
                     >
                         <span className="material-symbols-outlined text-xl">add</span>
                     </button>

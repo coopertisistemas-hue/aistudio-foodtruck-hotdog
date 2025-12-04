@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useBrand } from '../hooks/useBrand';
 
 export const TopAppBar = ({
     title,
@@ -11,6 +12,7 @@ export const TopAppBar = ({
     rightElement?: React.ReactNode;
 }) => {
     const navigate = useNavigate();
+    const brand = useBrand();
 
     return (
         <header className="sticky top-0 z-20 flex h-16 items-center bg-background-light/95 dark:bg-background-dark/95 px-4 backdrop-blur-sm shadow-sm border-b border-gray-100 dark:border-white/5">

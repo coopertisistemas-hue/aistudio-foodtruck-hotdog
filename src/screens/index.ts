@@ -7,3 +7,5 @@ export * from './CheckoutScreen';
 export * from './SuccessScreen';
 export * from './OrdersScreen';
 export * from './OrderDetailScreen';
+export * from './LoginScreen';
+export * from './WalletScreen';

@@ -2,12 +2,14 @@ import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../context/CartContext';
 import { OrderStatus } from '../types';
+import { useBrand } from '../hooks/useBrand';
 
 export const OrderDetailScreen = () => {
     const { orderId } = useParams();
     const navigate = useNavigate();
     const { orders } = useApp();
     const order = orders.find(o => o.id === orderId);
+    const brand = useBrand();
 
     if (!order) return <div>Pedido não encontrado</div>;
 
@@ -42,7 +44,10 @@ export const OrderDetailScreen = () => {
 
                         {steps.map((step, idx) => (
                             <div key={idx} className="flex gap-4 relative z-10">
-                                <div className={`size-10 rounded-full flex items-center justify-center border-2 shrink-0 ${step.done ? 'bg-primary border-primary text-white' : 'bg-background-light dark:bg-background-dark border-gray-300 dark:border-gray-600 text-gray-400'}`}>
+                                <div
+                                    className={`size-10 rounded-full flex items-center justify-center border-2 shrink-0 ${!step.done ? 'bg-background-light dark:bg-background-dark border-gray-300 dark:border-gray-600 text-gray-400' : 'text-white'}`}
+                                    style={step.done ? { backgroundColor: brand.primaryColor, borderColor: brand.primaryColor } : {}}
+                                >
                                     <span className="material-symbols-outlined text-sm">
                                         {idx === 0 ? 'receipt_long' : idx === 1 ? 'skillet' : idx === 2 ? 'motorcycle' : 'check'}
                                     </span>

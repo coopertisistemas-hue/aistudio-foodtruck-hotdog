@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Category } from '../types';
+import { useBrand } from '../hooks/useBrand';
 
 interface CategoryCardProps {
     category: Category;
@@ -8,13 +9,17 @@ interface CategoryCardProps {
 
 export const CategoryCard = ({ category }: CategoryCardProps) => {
     const navigate = useNavigate();
+    const brand = useBrand();
 
     return (
         <div
             onClick={() => navigate(`/menu/${category.id}`)}
             className="flex items-center gap-4 p-4 bg-card-light dark:bg-card-dark rounded-2xl shadow-sm border border-gray-100 dark:border-white/5 active:bg-gray-50 dark:active:bg-white/5 transition-colors cursor-pointer"
         >
-            <div className="size-14 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary">
+            <div
+                className="size-14 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: `${brand.primaryColor}20`, color: brand.primaryColor }}
+            >
                 <span className="material-symbols-outlined text-3xl">{category.icon}</span>
             </div>
             <div className="flex-1">

@@ -1,19 +1,24 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/CartContext';
+import { useBrand } from '../hooks/useBrand';
 
 export const FloatingCart = () => {
     const { cart, cartTotal } = useApp();
     const navigate = useNavigate();
     const location = useLocation();
+    const brand = useBrand();
 
     if (cart.length === 0) return null;
     // Hide on cart page and checkout/success
-    if (['/cart', '/checkout', '/success', '/splash'].some(p => location.pathname.startsWith(p))) return null;
+    if (['cart', 'checkout', 'success', 'splash'].some(p => location.pathname.includes(p))) return null;
 
     return (
         <div className="fixed bottom-20 left-4 right-4 z-30 animate-in slide-in-from-bottom-5 fade-in duration-300">
-            <div className="bg-primary rounded-2xl p-4 shadow-xl shadow-primary/20 flex items-center gap-4">
+            <div
+                className="rounded-2xl p-4 shadow-xl shadow-primary/20 flex items-center gap-4"
+                style={{ backgroundColor: brand.primaryColor }}
+            >
                 <div className="size-12 rounded-xl bg-white/20 flex items-center justify-center text-white">
                     <span className="material-symbols-outlined">shopping_bag</span>
                 </div>
@@ -22,8 +27,9 @@ export const FloatingCart = () => {
                     <p className="text-lg font-bold">R$ {cartTotal.toFixed(2).replace('.', ',')}</p>
                 </div>
                 <button
-                    onClick={() => navigate('/cart')}
-                    className="bg-white text-primary px-5 py-3 rounded-xl font-bold text-sm shadow-sm active:scale-95 transition-transform"
+                    onClick={() => navigate(`/${brand.id}/cart`)}
+                    className="bg-white px-5 py-3 rounded-xl font-bold text-sm shadow-sm active:scale-95 transition-transform"
+                    style={{ color: brand.primaryColor }}
                 >
                     Ver sacola
                 </button>

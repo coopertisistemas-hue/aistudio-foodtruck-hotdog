@@ -19,6 +19,7 @@ export interface CartItem extends Product {
   quantity: number;
   notes?: string;
   cartId: string; // unique id for cart item (product id + notes variation)
+  addedBy?: string;
 }
 
 export enum OrderStatus {
@@ -49,3 +50,22 @@ export type RootStackParamList = {
   Orders: undefined;
   OrderDetails: { orderId: string };
 };
+
+export interface SharedCart {
+  id: string;
+  org_id: string;
+  host_user_id?: string;
+  status: 'open' | 'closed' | 'ordered';
+  code?: string;
+}
+
+export interface SharedCartItem {
+  id: string;
+  cart_id: string;
+  product_id: string;
+  quantity: number;
+  notes?: string;
+  added_by_name: string;
+  added_by_avatar?: string;
+  product_data: Product;
+}

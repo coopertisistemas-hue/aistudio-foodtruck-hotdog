@@ -6,3 +6,5 @@ export * from './Header';
 export * from './HighlightCard';
 export * from './CategoryCard';
 export * from './ProductCard';
+export * from './MobileContainer';
+export * from './UpsellModal';

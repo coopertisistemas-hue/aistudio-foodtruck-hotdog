@@ -1,13 +1,18 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useBrand } from '../hooks/useBrand';
 
 export const SuccessScreen = () => {
     const { orderId } = useParams();
     const navigate = useNavigate();
+    const brand = useBrand();
 
     return (
         <div className="flex flex-col h-screen justify-center items-center p-6 text-center bg-background-light dark:bg-background-dark">
-            <div className="size-24 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-6 text-green-600 dark:text-green-400 animate-in zoom-in duration-300">
+            <div
+                className="size-24 rounded-full flex items-center justify-center mb-6 animate-in zoom-in duration-300"
+                style={{ backgroundColor: `${brand.successColor}20`, color: brand.successColor }}
+            >
                 <span className="material-symbols-outlined text-5xl">check_circle</span>
             </div>
 
@@ -21,20 +26,27 @@ export const SuccessScreen = () => {
                 </div>
                 <div className="flex justify-between py-2 pt-4">
                     <span className="text-gray-500">Status</span>
-                    <span className="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded text-sm font-bold">Recebido</span>
+                    <span
+                        className="px-2 py-0.5 rounded text-sm font-bold"
+                        style={{ backgroundColor: `${brand.warningColor}20`, color: brand.warningColor }}
+                    >
+                        Recebido
+                    </span>
                 </div>
             </div>
 
             <div className="w-full max-w-sm space-y-3">
                 <button
                     onClick={() => navigate('/orders')}
-                    className="w-full bg-primary text-white font-bold py-4 rounded-xl"
+                    className="w-full text-white font-bold py-4 rounded-xl"
+                    style={{ backgroundColor: brand.primaryColor }}
                 >
                     Acompanhar pedido
                 </button>
                 <button
                     onClick={() => navigate('/home')}
-                    className="w-full text-primary font-bold py-4 rounded-xl hover:bg-primary/5 transition-colors"
+                    className="w-full font-bold py-4 rounded-xl hover:bg-black/5 transition-colors"
+                    style={{ color: brand.primaryColor }}
                 >
                     Voltar para o início
                 </button>
