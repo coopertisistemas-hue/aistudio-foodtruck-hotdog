@@ -46,25 +46,39 @@ export const HomeScreen = () => {
             <Header />
 
             <main className="p-4 space-y-6">
+                {/* Search Bar */}
+                <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400">search</span>
+                    <input
+                        type="text"
+                        placeholder="Buscar no cardápio..."
+                        className="w-full h-12 pl-11 pr-4 bg-gray-100 dark:bg-gray-800/50 rounded-xl border-none outline-none text-sm font-medium focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-gray-400"
+                    />
+                </div>
+
                 {/* Banner */}
                 <HighlightCard />
 
                 {/* Quick Filters */}
-                <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+                <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4">
                     {[
-                        { icon: 'sell', label: 'Promoções', path: '/menu/promos' },
+                        { icon: 'local_offer', label: 'Promoções', path: '/menu/promos', active: true },
+                        { icon: 'lunch_dining', label: 'Combos', path: '/menu/combos' },
                         { icon: 'favorite', label: 'Favoritos', path: '/menu/favs' },
-                        { icon: 'receipt_long', label: 'Meus pedidos', path: '/orders' },
+                        { icon: 'receipt_long', label: 'Pedidos', path: '/orders' },
                     ].map((item, idx) => (
                         <button
                             key={idx}
                             onClick={() => navigate(item.path)}
-                            className="flex items-center gap-2 bg-card-light dark:bg-card-dark px-4 py-2.5 rounded-xl shadow-sm whitespace-nowrap border border-gray-100 dark:border-white/5 active:scale-95 transition-transform"
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-full shadow-sm whitespace-nowrap border active:scale-95 transition-all ${item.active
+                                    ? 'bg-primary text-white border-primary'
+                                    : 'bg-white dark:bg-card-dark border-gray-100 dark:border-white/5 text-gray-700 dark:text-gray-300'
+                                }`}
                         >
-                            <span className="material-symbols-outlined text-gray-700 dark:text-gray-300 text-lg">
+                            <span className={`material-symbols-outlined text-[18px] ${item.active ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
                                 {item.icon}
                             </span>
-                            <span className="font-medium text-sm">{item.label}</span>
+                            <span className="font-bold text-[13px]">{item.label}</span>
                         </button>
                     ))}
                 </div>

@@ -14,7 +14,7 @@ export const FloatingCart = () => {
     if (['cart', 'checkout', 'success', 'splash'].some(p => location.pathname.includes(p))) return null;
 
     return (
-        <div className="fixed bottom-20 left-4 right-4 z-30 animate-in slide-in-from-bottom-5 fade-in duration-300">
+        <div className="absolute bottom-20 left-4 right-4 z-30 animate-in slide-in-from-bottom-5 fade-in duration-300">
             <div
                 className="rounded-2xl p-4 shadow-xl shadow-primary/20 flex items-center gap-4"
                 style={{ backgroundColor: brand.primaryColor }}

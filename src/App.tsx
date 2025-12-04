@@ -41,7 +41,10 @@ const AppContent = () => {
 
     return (
         <AuthProvider>
-            <MobileContainer>
+            <MobileContainer
+                bottomNav={<BottomNav />}
+                floatingCart={<FloatingCart />}
+            >
                 <Routes>
                     <Route path="/" element={<Navigate to="/foodtruck/home" replace />} />
                     <Route path="/:slug">
@@ -59,8 +62,6 @@ const AppContent = () => {
                         <Route path="wallet" element={<WalletScreen />} />
                     </Route>
                 </Routes>
-                <FloatingCart />
-                <BottomNav />
             </MobileContainer>
         </AuthProvider>
     );
