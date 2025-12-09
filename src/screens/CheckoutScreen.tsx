@@ -26,7 +26,7 @@ export const CheckoutScreen = () => {
     const [number, setNumber] = useState('');
     const [complement, setComplement] = useState('');
     const [district, setDistrict] = useState('');
-    const [paymentMethod, setPaymentMethod] = useState('money');
+    const [paymentMethod, setPaymentMethod] = useState('cash_on_delivery');
 
     // Fetch potential upsell items (Drinks)
     useEffect(() => {
@@ -171,14 +171,43 @@ export const CheckoutScreen = () => {
                 <section>
                     <h2 className="font-bold text-lg mb-3">Pagamento</h2>
                     <div className="space-y-3">
-                        <label className="flex items-center gap-4 p-4 border rounded-xl cursor-pointer" style={{ borderColor: brand.primaryColor, backgroundColor: `${brand.primaryColor}10` }}>
-                            <div className="size-5 rounded-full border-4 bg-white" style={{ borderColor: brand.primaryColor }}></div>
-                            <span className="font-bold">Pagar na entrega (Dinheiro/Pix)</span>
-                        </label>
-                        <label className="flex items-center gap-4 p-4 border border-gray-200 dark:border-gray-700 bg-card-light dark:bg-card-dark rounded-xl opacity-60">
-                            <div className="size-5 rounded-full border border-gray-400"></div>
-                            <span>Cartão de Crédito (App)</span>
-                        </label>
+                        {/* Option 1: Pay on Delivery */}
+                        <div
+                            onClick={() => setPaymentMethod('cash_on_delivery')}
+                            className={`p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'cash_on_delivery'
+                                ? 'bg-primary/5 border-primary'
+                                : 'bg-card-light dark:bg-card-dark border-gray-200 dark:border-gray-700'}`}
+                            style={paymentMethod === 'cash_on_delivery' ? { borderColor: brand.primaryColor, backgroundColor: `${brand.primaryColor}10` } : {}}
+                        >
+                            <div className="flex items-center gap-4 mb-2">
+                                <div className={`size-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'cash_on_delivery' ? 'border-primary' : 'border-gray-400'}`} style={paymentMethod === 'cash_on_delivery' ? { borderColor: brand.primaryColor } : {}}>
+                                    {paymentMethod === 'cash_on_delivery' && <div className="size-2.5 rounded-full bg-primary" style={{ backgroundColor: brand.primaryColor }}></div>}
+                                </div>
+                                <span className="font-bold">Pagar na entrega</span>
+                            </div>
+                            <p className="text-xs text-gray-500 ml-9">
+                                Dinheiro, Cartão ou Pix na maquininha. O pagamento é feito ao entregador ou no balcão.
+                            </p>
+                        </div>
+
+                        {/* Option 2: Pix WhatsApp */}
+                        <div
+                            onClick={() => setPaymentMethod('pix_whatsapp')}
+                            className={`p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'pix_whatsapp'
+                                ? 'bg-primary/5 border-primary'
+                                : 'bg-card-light dark:bg-card-dark border-gray-200 dark:border-gray-700'}`}
+                            style={paymentMethod === 'pix_whatsapp' ? { borderColor: brand.primaryColor, backgroundColor: `${brand.primaryColor}10` } : {}}
+                        >
+                            <div className="flex items-center gap-4 mb-2">
+                                <div className={`size-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'pix_whatsapp' ? 'border-primary' : 'border-gray-400'}`} style={paymentMethod === 'pix_whatsapp' ? { borderColor: brand.primaryColor } : {}}>
+                                    {paymentMethod === 'pix_whatsapp' && <div className="size-2.5 rounded-full bg-primary" style={{ backgroundColor: brand.primaryColor }}></div>}
+                                </div>
+                                <span className="font-bold">Pix (Enviar no WhatsApp)</span>
+                            </div>
+                            <p className="text-xs text-gray-500 ml-9">
+                                Você fará o Pix e enviará o comprovante pelo WhatsApp. O estabelecimento irá validar e confirmar seu pedido.
+                            </p>
+                        </div>
                     </div>
                 </section>
             </main>

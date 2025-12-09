@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import { OrgProvider } from './context/OrgContext';
+import { FavoritesProvider } from './context/FavoritesContext';
 import { BottomNav, FloatingCart, MobileContainer } from './components';
 import {
     SplashScreen,
@@ -52,6 +53,7 @@ const AppContent = () => {
                         <Route path="splash" element={<SplashScreen />} />
                         <Route path="login" element={<LoginScreen />} />
                         <Route path="home" element={<HomeScreen />} />
+                        <Route path="menu" element={<MenuScreen />} />
                         <Route path="menu/:categoryId" element={<MenuScreen />} />
                         <Route path="product/:productId" element={<ProductDetailsScreen />} />
                         <Route path="cart" element={<CartScreen />} />
@@ -73,9 +75,11 @@ export default function App() {
     return (
         <HashRouter>
             <OrgProvider>
-                <AppProvider>
-                    <AppContent />
-                </AppProvider>
+                <FavoritesProvider>
+                    <AppProvider>
+                        <AppContent />
+                    </AppProvider>
+                </FavoritesProvider>
             </OrgProvider>
         </HashRouter>
     );

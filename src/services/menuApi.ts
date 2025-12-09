@@ -30,22 +30,34 @@ const mapProduct = (data: any): Product => ({
     description: data.description || '',
     price: Number(data.price),
     image: data.image_url || 'https://placehold.co/400x300?text=No+Image', // Default image
-    categoryId: data.category_id
+    categoryId: data.category_id,
+    is_combo: data.is_combo,
+    is_promotion: data.is_promotion,
+    promotional_price: data.promotional_price_cents ? data.promotional_price_cents / 100 : undefined
 });
 
-// Cache for the menu data
+export interface MenuFilters {
+    q?: string;
+    is_combo?: boolean;
+    is_promotion?: boolean;
+}
+
+// Cache for the menu data (only for default view without filters)
 let cachedCategories: Category[] | null = null;
 let cachedProducts: Product[] | null = null;
 
-export async function fetchMenu() {
+export async function fetchMenu(filters?: MenuFilters) {
     if (!supabase) throw new Error('Supabase not configured');
 
-    if (cachedCategories && cachedProducts) {
+    // Bypass cache if filters are present
+    const hasFilters = filters && (filters.q || filters.is_combo || filters.is_promotion);
+
+    if (!hasFilters && cachedCategories && cachedProducts) {
         return { categories: cachedCategories, products: cachedProducts };
     }
 
-    const { data, error } = await supabase.functions.invoke('get-menu', {
-        body: { orgId: ORG_ID }
+    const { data, error } = await supabase.functions.invoke('readdy-menu', {
+        body: { orgId: ORG_ID, ...filters }
     });
 
     if (error) {
@@ -65,8 +77,10 @@ export async function fetchMenu() {
         cat.productCount = products.filter((p: Product) => p.categoryId === cat.id).length;
     });
 
-    cachedCategories = categories;
-    cachedProducts = products;
+    if (!hasFilters) {
+        cachedCategories = categories;
+        cachedProducts = products;
+    }
 
     return { categories, products };
 }

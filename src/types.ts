@@ -5,6 +5,9 @@ export interface Product {
   price: number;
   image: string;
   categoryId: string;
+  is_combo?: boolean;
+  is_promotion?: boolean;
+  promotional_price?: number;
 }
 
 export interface Category {
@@ -29,6 +32,12 @@ export enum OrderStatus {
   DELIVERY = 'A caminho',
   DELIVERED = 'Entregue',
   CANCELLED = 'Cancelado'
+}
+
+export enum PaymentMethod {
+  PIX_WHATSAPP = 'pix_whatsapp',
+  CASH_ON_DELIVERY = 'cash_on_delivery',
+  CARD_ON_DELIVERY = 'card_on_delivery'
 }
 
 export interface Order {
@@ -68,4 +77,37 @@ export interface SharedCartItem {
   added_by_name: string;
   added_by_avatar?: string;
   product_data: Product;
+}
+
+export interface OrgData {
+  id: string;
+  name: string;
+  slug: string;
+  status: 'open' | 'closed';
+  rating: number;
+  delivery_time_min: number;
+  delivery_time_max: number;
+  banner_url: string;
+  highlight?: {
+    id: string;
+    title: string;
+    description: string;
+    image_url: string;
+    action_link: string;
+  };
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  phone?: string;
+  loyalty_balance: number;
+}
+
+export interface Favorite {
+  user_id: string;
+  product_id: string;
+  created_at: string;
+  product?: Product;
 }
