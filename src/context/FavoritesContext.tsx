@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { fetchUserProfile, toggleFavorite as apiToggle } from '../services/profileApi';
+import { fetchUserProfile, toggleFavorite as apiToggle } from '../lib/api/profileApi';
 import { supabase } from '../lib/supabaseClient';
 
 interface FavoritesContextType {

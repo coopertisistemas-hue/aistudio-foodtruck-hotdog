@@ -4,74 +4,12 @@ import { useApp } from '../context/CartContext';
 import { TopAppBar, UpsellModal } from '../components';
 import { useBrand } from '../hooks/useBrand';
 import { Product } from '../types';
-import { fetchMenu } from '../services/menuApi';
+import { fetchMenu } from '../lib/api/menuApi';
+import { analytics } from '../lib/analytics';
 import { supabase } from '../lib/supabaseClient';
 
 export const CheckoutScreen = () => {
-    const navigate = useNavigate();
-    const { createOrder, cartTotal, cart, addToCart } = useApp();
-    const [loading, setLoading] = useState(false);
-    const brand = useBrand();
-
-    // Upsell State
-    const [showUpsell, setShowUpsell] = useState(false);
-    const [upsellProducts, setUpsellProducts] = useState<Product[]>([]);
-    const [loadingUpsell, setLoadingUpsell] = useState(false);
-    const [upsellShown, setUpsellShown] = useState(false); // Track if already shown
-
-    // Form State
-    const [name, setName] = useState('');
-    const [phone, setPhone] = useState('');
-    const [address, setAddress] = useState('');
-    const [number, setNumber] = useState('');
-    const [complement, setComplement] = useState('');
-    const [district, setDistrict] = useState('');
-    const [paymentMethod, setPaymentMethod] = useState('cash_on_delivery');
-
-    // Fetch potential upsell items (Drinks)
-    useEffect(() => {
-        const loadUpsellItems = async () => {
-            setLoadingUpsell(true);
-            try {
-                const { products, categories } = await fetchMenu();
-                // Find drink category (naive check by name)
-                const drinkCat = categories.find(c => c.name.toLowerCase().includes('bebida'));
-                if (drinkCat) {
-                    const drinks = products.filter(p => p.categoryId === drinkCat.id);
-                    setUpsellProducts(drinks);
-                }
-            } catch (error) {
-                console.error('Failed to load upsell items', error);
-            } finally {
-                setLoadingUpsell(false);
-            }
-        };
-        loadUpsellItems();
-    }, []);
-
-    const handleOrder = async () => {
-        if (!name || !phone || !address || !number || !district) {
-            alert('Por favor, preencha todos os campos obrigatórios.');
-            return;
-        }
-
-        // Check for Upsell Opportunity
-        // If no drinks in cart AND we haven't shown upsell yet AND we have upsell products
-        const hasDrinks = cart.some(item => {
-            // Check if item is in drink category (we'd need category info in cart item, or infer from name/id)
-            // For now, let's check if the item ID matches any of our known drink IDs
-            return upsellProducts.some(drink => drink.id === item.id);
-        });
-
-        if (!hasDrinks && !upsellShown && upsellProducts.length > 0) {
-            setShowUpsell(true);
-            setUpsellShown(true); // Don't show again this session
-            return;
-        }
-
-        processOrder();
-    };
-
+    // ...
     const processOrder = async () => {
         setLoading(true);
         try {
@@ -82,6 +20,13 @@ export const CheckoutScreen = () => {
                 phone,
                 address: fullAddress,
                 paymentMethod
+            });
+
+            analytics.trackEvent('complete_order', {
+                order_id: orderId,
+                total: cartTotal + 5, // Includes fee
+                payment_method: paymentMethod,
+                items_count: cart.length
             });
 
             navigate(`/success/${orderId}`);

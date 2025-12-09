@@ -2,9 +2,15 @@ import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useBrand } from '../hooks/useBrand';
 
+import { analytics } from '../lib/analytics';
+
 export const SuccessScreen = () => {
     const { orderId } = useParams();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        analytics.trackEvent('view_checkout_success', { order_id: orderId });
+    }, [orderId]);
     const brand = useBrand();
 
     return (
@@ -37,8 +43,8 @@ export const SuccessScreen = () => {
 
             <div className="w-full max-w-sm space-y-3">
                 <button
-                    onClick={() => navigate('/orders')}
-                    className="w-full text-white font-bold py-4 rounded-xl"
+                    onClick={() => navigate(`/orders/${orderId}`)}
+                    className="w-full text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform"
                     style={{ backgroundColor: brand.primaryColor }}
                 >
                     Acompanhar pedido

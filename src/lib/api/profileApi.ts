@@ -1,5 +1,5 @@
-import { supabase } from '../lib/supabaseClient';
-import { UserProfile, Favorite } from '../types';
+import { supabase } from '../supabaseClient';
+import { UserProfile, Favorite } from '../../types';
 
 export async function fetchUserProfile(): Promise<{ profile: UserProfile, favorites: Favorite[] }> {
     const { data, error } = await supabase.functions.invoke('readdy-user-profile');

@@ -1,5 +1,5 @@
 import React from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AppProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import { OrgProvider } from './context/OrgContext';
@@ -17,7 +17,7 @@ import {
     OrderDetailScreen,
     LoginScreen,
     WalletScreen,
-} from './screens';
+} from './pages';
 
 import OneSignal from 'react-onesignal';
 
@@ -40,10 +40,21 @@ const AppContent = () => {
         runOneSignal();
     }, []);
 
+    const location = useLocation();
+
+    const shouldShowNav = () => {
+        const path = location.pathname;
+        if (path.includes('/home')) return true;
+        if (path.includes('/menu')) return true;
+        if (path.endsWith('/orders')) return true;
+        if (path.includes('/wallet')) return true;
+        return false;
+    };
+
     return (
         <AuthProvider>
             <MobileContainer
-                bottomNav={<BottomNav />}
+                bottomNav={shouldShowNav() ? <BottomNav /> : null}
                 floatingCart={<FloatingCart />}
             >
                 <Routes>

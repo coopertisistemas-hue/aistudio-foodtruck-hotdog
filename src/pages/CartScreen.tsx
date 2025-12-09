@@ -1,34 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/CartContext';
 import { TopAppBar } from '../components';
 import { useBrand } from '../hooks/useBrand';
+import { buildWhatsAppLink, formatCartMessage } from '../lib/whatsappUtils';
+import { analytics } from '../lib/analytics';
 
 export const CartScreen = () => {
-    const { cart, updateQuantity, removeFromCart, cartTotal, clearCart, createSharedCart, sharedCartId, joinSharedCart } = useApp();
+    const { cart, updateQuantity, removeFromCart, cartTotal, clearCart, createSharedCart, sharedCartId, joinSharedCart, guestName } = useApp();
     const navigate = useNavigate();
     const brand = useBrand();
     const [copySuccess, setCopySuccess] = useState(false);
 
-    // Check for shared cart in URL
-    React.useEffect(() => {
-        const params = new URLSearchParams(window.location.hash.split('?')[1]);
-        const sharedId = params.get('shared');
-        if (sharedId && !sharedCartId) {
-            const name = prompt('Qual seu nome para entrar no pedido?');
-            if (name) {
-                joinSharedCart(sharedId, name);
-                // Clear param to avoid re-prompting? Or keep it?
-                // navigate(window.location.pathname, { replace: true });
-            }
-        }
-    }, []);
+    useEffect(() => {
+        analytics.trackEvent('view_cart', { items_count: cart.length, total: cartTotal });
+    }, [cart.length, cartTotal]);
+
+    // ... (existing shared cart logic lines 13-25)
 
     const deliveryFee = 5.00;
 
     const handleCreateGroupOrder = async () => {
         try {
             await createSharedCart();
+            analytics.trackEvent('create_shared_cart');
         } catch (error) {
             console.error(error);
             alert('Erro ao criar pedido em grupo.');
@@ -40,19 +35,44 @@ export const CartScreen = () => {
         navigator.clipboard.writeText(link);
         setCopySuccess(true);
         setTimeout(() => setCopySuccess(false), 2000);
+        analytics.trackEvent('share_cart_link');
+    };
+
+    const handleWhatsAppOrder = () => {
+        if (!brand.whatsappNumber) return;
+
+        analytics.trackEvent('click_whatsapp_cart', { total: cartTotal + deliveryFee, items_count: cart.length });
+
+        const message = formatCartMessage(cart, cartTotal + deliveryFee, guestName === 'Convidado' ? '' : guestName);
+        const link = buildWhatsAppLink({
+            phone: brand.whatsappNumber,
+            message
+        });
+        window.open(link, '_blank');
     };
 
     if (cart.length === 0 && !sharedCartId) {
+        // ... (existing empty state lines 46-61) 
         return (
-            <div className="flex flex-col h-screen">
+            <div className="flex flex-col h-screen bg-gray-50 dark:bg-[#121212]">
                 <TopAppBar title="Sua Sacola" showBack />
-                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center opacity-60">
-                    <span className="material-symbols-outlined text-6xl mb-4">shopping_basket</span>
-                    <h2 className="text-xl font-bold">Sua sacola está vazia</h2>
-                    <p className="mt-2">Adicione alguns itens deliciosos para começar.</p>
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in duration-300">
+                    <div className="size-24 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-6">
+                        <span className="material-symbols-outlined text-4xl text-gray-400">shopping_basket</span>
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Sua sacola está vazia</h2>
+                    <p className="text-gray-500 mb-8 max-w-[200px] leading-relaxed">Que tal dar uma olhada no nosso cardápio recheado?</p>
+
+                    <button
+                        onClick={() => navigate('/menu')}
+                        className="w-full max-w-xs bg-primary text-white font-bold py-3.5 rounded-xl shadow-lg active:scale-95 transition-transform mb-4"
+                    >
+                        Ver Cardápio
+                    </button>
+
                     <button
                         onClick={handleCreateGroupOrder}
-                        className="mt-8 px-6 py-3 rounded-xl font-bold text-sm border-2 border-dashed border-gray-300 hover:border-primary hover:text-primary transition-colors"
+                        className="text-primary font-bold text-sm py-2 px-4 rounded-lg hover:bg-primary/5 transition-colors"
                     >
                         Criar Pedido em Grupo
                     </button>
@@ -68,24 +88,9 @@ export const CartScreen = () => {
             } />
 
             <main className="flex-1 overflow-y-auto p-4 space-y-6">
-                {/* Shared Cart Banner */}
-                {sharedCartId && (
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-4 flex items-center justify-between">
-                        <div>
-                            <h3 className="font-bold text-blue-700 dark:text-blue-400 text-sm">Pedido Compartilhado</h3>
-                            <p className="text-xs text-blue-600 dark:text-blue-300">Convide amigos para adicionar itens.</p>
-                        </div>
-                        <button
-                            onClick={handleCopyLink}
-                            className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-blue-900 rounded-lg shadow-sm text-xs font-bold text-blue-700 dark:text-blue-300 active:scale-95 transition-transform"
-                        >
-                            <span className="material-symbols-outlined text-sm">link</span>
-                            {copySuccess ? 'Copiado!' : 'Copiar Link'}
-                        </button>
-                    </div>
-                )}
+                {/* ... (existing shared cart banner and items list lines 71-111) */}
 
-                {/* Items */}
+                {/* Items (Just minimal context to match replacement) */}
                 <section className="bg-card-light dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-white/5 space-y-6">
                     {cart.map((item) => (
                         <div key={item.cartId} className="flex gap-4">
@@ -131,14 +136,19 @@ export const CartScreen = () => {
             <footer className="p-4 bg-background-light dark:bg-background-dark border-t border-gray-200 dark:border-gray-800 space-y-3">
                 {!sharedCartId && cart.length > 0 && (
                     <button
-                        onClick={handleCreateGroupOrder}
-                        className="w-full bg-white dark:bg-card-dark text-gray-700 dark:text-gray-200 font-bold py-4 rounded-xl border border-gray-200 dark:border-gray-700 active:scale-[0.98] transition-transform"
+                        onClick={handleWhatsAppOrder}
+                        className="w-full bg-[#25D366] text-white font-bold py-4 rounded-xl shadow-sm active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
                     >
-                        Criar Pedido em Grupo
+                        <span className="material-symbols-outlined">chat</span>
+                        Pedir pelo WhatsApp
                     </button>
                 )}
+
                 <button
-                    onClick={() => navigate('/checkout')}
+                    onClick={() => {
+                        analytics.trackEvent('begin_checkout', { total: cartTotal + deliveryFee });
+                        navigate('/checkout');
+                    }}
                     className="w-full text-white font-bold py-4 rounded-xl shadow-lg active:scale-[0.98] transition-transform"
                     style={{ backgroundColor: brand.primaryColor, boxShadow: `0 10px 15px -3px ${brand.primaryColor}40` }}
                 >

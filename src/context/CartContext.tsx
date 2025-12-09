@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { CartItem, Product, Order } from '../types';
-import { createOrderApi, fetchOrdersApi, CreateOrderParams } from '../services/orderApi';
+import { createOrderApi, fetchOrdersApi, CreateOrderParams } from '../lib/api/orderApi';
 import { supabase } from '../lib/supabaseClient';
+
 import { useOrg } from './OrgContext';
+import { useAuth } from './AuthContext';
 
 interface AppContextType {
     cart: CartItem[];
@@ -42,9 +44,19 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         const savedCart = localStorage.getItem(cartKey);
         if (savedCart) {
             try {
-                setCart(JSON.parse(savedCart));
+                const parsed = JSON.parse(savedCart);
+                // Migration: Check if it's the old array format
+                if (Array.isArray(parsed)) {
+                    setCart(parsed);
+                } else if (parsed && parsed.items) {
+                    // New format { items, updatedAt }
+                    setCart(parsed.items);
+                } else {
+                    setCart([]);
+                }
             } catch (e) {
                 console.error("Failed to load cart", e);
+                setCart([]);
             }
         } else {
             setCart([]);
@@ -55,7 +67,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     // Save local cart to local storage whenever it changes
     useEffect(() => {
         if (sharedCartId) return; // Don't save shared cart to local storage
-        localStorage.setItem(cartKey, JSON.stringify(cart));
+
+        const payload = {
+            items: cart,
+            updatedAt: Date.now()
+        };
+        localStorage.setItem(cartKey, JSON.stringify(payload));
     }, [cart, cartKey, sharedCartId]);
 
     // Realtime Subscription for Shared Cart
@@ -112,8 +129,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
     const refreshOrders = async () => {
         try {
-            const data = await fetchOrdersApi();
-            setOrders(data);
+            if (user?.id) {
+                const data = await fetchOrdersApi(user.id);
+                setOrders(data);
+            } else {
+                setOrders([]);
+            }
         } catch (error) {
             console.error("Failed to fetch orders", error);
         }
@@ -206,11 +227,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
     const cartTotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
+    const { user } = useAuth(); // Need to import useAuth at top
+
     const createOrder = async (customerData?: any) => {
         const params: CreateOrderParams = {
             items: cart,
             total: cartTotal + 5.0, // + delivery fee
-            customer: customerData
+            customer: customerData,
+            userId: user?.id
         };
 
         const newId = await createOrderApi(params);

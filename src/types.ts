@@ -41,7 +41,8 @@ export enum PaymentMethod {
 }
 
 export interface Order {
-  id: string;
+  id: string | number;
+  created_at?: string;
   date: string;
   status: OrderStatus;
   total: number;
@@ -110,4 +111,15 @@ export interface Favorite {
   product_id: string;
   created_at: string;
   product?: Product;
+}
+
+export interface Tip {
+  id: string;
+  title: string;
+  content: string;
+  relatedProductId?: string;
+  isSponsored?: boolean;
+  sponsorLabel?: string;
+  image?: string;
+  tags?: string[];
 }

@@ -1,5 +1,5 @@
-import { supabase } from '../lib/supabaseClient';
-import { Order, CartItem, OrderStatus } from '../types';
+import { supabase } from '../supabaseClient';
+import { Order, CartItem, OrderStatus } from '../../types';
 
 const ORG_ID = import.meta.env.VITE_ORG_ID_FOODTRUCK as string;
 
@@ -12,6 +12,7 @@ export interface CreateOrderParams {
         address: string;
     };
     paymentMethod?: string;
+    userId?: string;
 }
 
 export async function createOrderApi(params: CreateOrderParams): Promise<string> {
@@ -24,7 +25,8 @@ export async function createOrderApi(params: CreateOrderParams): Promise<string>
         customer_name: params.customer?.name,
         customer_phone: params.customer?.phone,
         customer_address: params.customer?.address,
-        payment_method: params.paymentMethod
+        payment_method: params.paymentMethod,
+        user_id: params.userId
     };
 
     const itemsPayload = params.items.map(item => ({
@@ -50,13 +52,10 @@ export async function createOrderApi(params: CreateOrderParams): Promise<string>
     return data.orderId;
 }
 
-export async function fetchOrdersApi(): Promise<Order[]> {
+export async function fetchOrdersApi(userId?: string): Promise<Order[]> {
     if (!supabase) throw new Error('Supabase not configured');
 
-    // We can keep fetching orders directly for now, or move this to an Edge Function too.
-    // For now, let's keep it direct to save time, as read access is usually fine.
-    // But if we want full security, we should move it.
-    // Let's stick to direct read for now as per plan scope (create-order was the focus).
+    if (!userId) return []; // Client app: never return orders without user context
 
     const { data, error } = await supabase
         .from('orders')
@@ -65,6 +64,7 @@ export async function fetchOrdersApi(): Promise<Order[]> {
             items:order_items(*)
         `)
         .eq('org_id', ORG_ID)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -75,6 +75,7 @@ export async function fetchOrdersApi(): Promise<Order[]> {
     // Map DB response to UI Order type
     return data.map((order: any) => ({
         id: order.id,
+        created_at: order.created_at,
         date: new Date(order.created_at).toLocaleString('pt-BR', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' }),
         status: order.status as OrderStatus,
         total: Number(order.total),
@@ -90,4 +91,30 @@ export async function fetchOrdersApi(): Promise<Order[]> {
             cartId: item.id // Use DB id as cartId for display purposes
         }))
     }));
+}
+
+export interface RatingParams {
+    orderId: string | number;
+    rating: number;
+    subRatings?: {
+        service?: number;
+        delivery?: number;
+        food?: number;
+    };
+    comment?: string;
+}
+
+export async function createOrderRatingApi(params: RatingParams): Promise<void> {
+    console.log('Submitting rating:', params);
+    // Mock API call - in real app, this would insert into 'order_ratings' table
+    return new Promise((resolve) => setTimeout(resolve, 1000));
+}
+
+// Check if order is already rated (Local storage mock for now)
+export function isOrderRated(orderId: string | number): boolean {
+    return localStorage.getItem(`rated_order_${orderId}`) === 'true';
+}
+
+export function setOrderRated(orderId: string | number) {
+    localStorage.setItem(`rated_order_${orderId}`, 'true');
 }

@@ -3,7 +3,7 @@ import { TopAppBar, ProductCard } from '../components';
 import { useBrand } from '../hooks/useBrand';
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import { fetchUserProfile } from '../services/profileApi';
+import { fetchUserProfile } from '../lib/api/profileApi';
 import { UserProfile, Favorite } from '../types';
 
 interface Transaction {

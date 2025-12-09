@@ -8,3 +8,8 @@ export * from './CategoryCard';
 export * from './ProductCard';
 export * from './MobileContainer';
 export * from './UpsellModal';
+export * from './RatingModal';
+export * from './WhatsAppFloatingButton';
+export * from './SearchBar';
+export * from './SuggestionsSection';
+export * from './TipsSection';

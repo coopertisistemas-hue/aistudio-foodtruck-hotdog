@@ -1,5 +1,5 @@
-import { supabase } from '../lib/supabaseClient';
-import { OrgData } from '../types';
+import { supabase } from '../supabaseClient';
+import { OrgData } from '../../types';
 
 const ORG_ID = import.meta.env.VITE_ORG_ID_FOODTRUCK as string;
 
