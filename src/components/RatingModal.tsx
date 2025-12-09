@@ -49,7 +49,7 @@ export const RatingModal = ({ isOpen, onClose, onSubmit, orderId }: RatingModalP
             onClose();
         } catch (e) {
             console.error(e);
-            alert('Erro ao enviar avaliação. Tente novamente.');
+            // Parent handles error UI (toast)
         } finally {
             setSubmitting(false);
         }

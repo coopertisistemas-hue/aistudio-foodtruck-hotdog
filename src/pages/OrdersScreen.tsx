@@ -1,7 +1,24 @@
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabaseClient';
+import { TopAppBar, RatingModal } from '../components';
+import { useBrand } from '../hooks/useBrand';
+import { fetchOrdersApi, isOrderRated, setOrderRated, Order } from '../lib/api/orderApi';
+import { createOrderRatingApi } from '../lib/api/ratingsApi';
 import { analytics } from '../lib/analytics';
+import { toast } from 'sonner';
 
 export const OrdersScreen = () => {
-    // ...
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    const brand = useBrand();
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const [ratingModalOpen, setRatingModalOpen] = useState(false);
+    const [selectedOrderId, setSelectedOrderId] = useState<string | number | null>(null);
+    const [ratedOrderIds, setRatedOrderIds] = useState<Set<string | number>>(new Set());
     useEffect(() => {
         analytics.trackEvent('view_orders');
 
@@ -67,13 +84,32 @@ export const OrdersScreen = () => {
     };
 
     const handleRatingSubmit = async (data: any) => {
-        if (selectedOrderId) {
+        if (!selectedOrderId) return;
+
+        try {
+            // Use brand.id or fallback to env logic if necessary. 
+            // In this specific project, orgId is usually fixed or comes from brand context.
+            const orgId = brand.id || (import.meta.env.VITE_ORG_ID_FOODTRUCK as string);
+
             await createOrderRatingApi({
                 orderId: selectedOrderId,
-                ...data
+                orgId: orgId,
+                customerId: user?.id,
+                ratingOverall: data.rating,
+                ratingService: data.subRatings?.service,
+                ratingDelivery: data.subRatings?.delivery,
+                ratingFood: data.subRatings?.food,
+                comment: data.comment,
+                source: 'client_app'
             });
+
             setOrderRated(selectedOrderId);
             setRatedOrderIds(prev => new Set(prev).add(selectedOrderId));
+            toast.success('Avaliação enviada com sucesso!');
+        } catch (error) {
+            console.error('Rating error:', error);
+            toast.error('Não foi possível enviar a avaliação. Tente novamente.');
+            throw error;
         }
     };
 
