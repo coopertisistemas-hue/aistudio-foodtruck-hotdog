@@ -1,9 +1,17 @@
 import { supabase } from '../supabaseClient';
-import { OrgData } from '../../types';
+import { OrgData, Category, Product } from '../../types';
 
 const ORG_ID = import.meta.env.VITE_ORG_ID_FOODTRUCK as string;
 
-export async function fetchHomeData(): Promise<OrgData> {
+export interface HomePayload {
+    org: OrgData;
+    categories: Category[];
+    featuredProduct: Product | null;
+    mode: 'full' | 'degraded';
+    success: boolean;
+}
+
+export async function fetchHomeData(): Promise<HomePayload> {
     if (!supabase) throw new Error('Supabase not configured');
 
     console.log('Fetching home data for org:', ORG_ID);
@@ -56,8 +64,70 @@ export async function fetchHomeData(): Promise<OrgData> {
         delivery_time_min: orgRaw.eta_min || 0,
         delivery_time_max: orgRaw.eta_max || 0,
         banner_url: orgRaw.background_image_url || orgRaw.logo_url, // Fallback
-        highlight: undefined, // Or map featuredProduct if needed
+        highlight: undefined,
     };
 
-    return mappedOrg;
+    // Map Categories
+    const categories: Category[] = (data.categories || []).map((c: any) => {
+        const rawName = c.name || '';
+        return {
+            id: c.id,
+            name: mapCategoryName(rawName),
+            description: c.description || '',
+            icon: c.icon || mapCategoryIcon(rawName),
+            productCount: 0
+        };
+    });
+
+    // Map Featured Product
+    let featuredProduct: Product | null = null;
+    if (data.featuredProduct) {
+        const fp = data.featuredProduct;
+        featuredProduct = {
+            id: fp.id,
+            name: fp.name,
+            description: fp.description,
+            price: fp.price || 0,
+            image: fp.image_url,
+            categoryId: 'featured',
+            is_promotion: fp.is_promo,
+            promotional_price: fp.promoPrice
+        };
+    }
+
+    return {
+        org: mappedOrg,
+        categories,
+        featuredProduct,
+        mode: data.mode || 'full',
+        success: data.success || true
+    };
+}
+
+function mapCategoryName(rawName: string): string {
+    const lower = rawName.toLowerCase().trim();
+    const map: Record<string, string> = {
+        'lunch_dining': 'Lanches',
+        'kebab_dining': 'Hot Dogs',
+        'fastfood': 'Combos',
+        'local_bar': 'Bebidas',
+        'restaurant_menu': 'Geral',
+        'restaurant': 'Restaurante',
+        'icecream': 'Sobremesas',
+        'ice_cream': 'Sobremesas',
+        'cake': 'Doces',
+        'local_cafe': 'Cafés',
+        'local_pizza': 'Pizzas',
+        'bakery_dining': 'Padaria',
+        'set_meal': 'Pratos Feitos',
+    };
+    return map[lower] || rawName;
+}
+
+function mapCategoryIcon(rawName: string): string {
+    const lower = rawName.toLowerCase().trim();
+    if (['lunch_dining', 'kebab_dining', 'fastfood', 'local_bar', 'restaurant', 'icecream', 'ice_cream', 'cake', 'local_cafe', 'local_pizza', 'bakery_dining', 'set_meal'].includes(lower)) {
+        return lower === 'icecream' ? 'ice_cream' : lower;
+    }
+    return 'restaurant';
 }
