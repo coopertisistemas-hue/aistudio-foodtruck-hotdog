@@ -33,40 +33,44 @@ export const OrgProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             // But for Multi-Tenancy, we want to enforce a slug or subdomain.
             // For this phase, let's try to fetch by slug if it looks like one, otherwise default.
 
-            let slugToFetch = 'foodtruck'; // Default for now
+            // Default slug for FoodTruck Hot Dog (matches DB)
+            // In future, this comes from subdomain/path
+            let slugToFetch = 'foodtruck-hotdog';
 
             // TODO: Enhance slug detection logic in Phase 2.2 (Routing)
 
             try {
+                // Use public view to avoid RLS 401 on 'orgs' table
                 const { data, error } = await supabase
-                    .from('orgs')
+                    .from('public_org_profiles')
                     .select('*')
                     .eq('slug', slugToFetch)
-                    .single();
+                    .maybeSingle(); // Use maybeSingle to avoid 406 on 0 rows
 
                 if (error) {
                     console.error('Error fetching org:', error);
-                    // Fallback to local config if DB fetch fails (e.g. offline or dev)
                     setOrg(foodtruckConfig);
-                } else if (data) {
-                    // Map DB columns to BrandConfig
+                } else if (!data) {
+                    console.warn(`OrgContext: no public_org_profiles found for slug '${slugToFetch}' - using local fallback`);
+                    setOrg(foodtruckConfig);
+                } else {
                     setOrg({
-                        id: data.slug,
+                        id: data.org_id, // Mapped from view (id as org_id)
                         displayName: data.name,
                         logoUrl: data.logo_url || foodtruckConfig.logoUrl,
                         primaryColor: data.primary_color || foodtruckConfig.primaryColor,
                         secondaryColor: data.secondary_color || foodtruckConfig.secondaryColor,
-                        backgroundColor: foodtruckConfig.backgroundColor, // Default for now
+                        backgroundColor: foodtruckConfig.backgroundColor,
                         surfaceColor: foodtruckConfig.surfaceColor,
                         textPrimaryColor: foodtruckConfig.textPrimaryColor,
                         textSecondaryColor: foodtruckConfig.textSecondaryColor,
                         successColor: foodtruckConfig.successColor,
                         warningColor: foodtruckConfig.warningColor,
                         dangerColor: foodtruckConfig.dangerColor,
-                        whatsappNumber: foodtruckConfig.whatsappNumber, // TODO: Add to DB
-                        addressLine: foodtruckConfig.addressLine, // TODO: Add to DB
-                        openingHours: foodtruckConfig.openingHours, // TODO: Add to DB
-                        instagramUrl: foodtruckConfig.instagramUrl, // TODO: Add to DB
+                        whatsappNumber: foodtruckConfig.whatsappNumber, // Not in view yet
+                        addressLine: foodtruckConfig.addressLine, // Not in view yet
+                        openingHours: foodtruckConfig.openingHours, // Not in view yet
+                        instagramUrl: foodtruckConfig.instagramUrl, // Not in view yet
                         backgroundImage: data.background_image_url || foodtruckConfig.backgroundImage
                     });
 

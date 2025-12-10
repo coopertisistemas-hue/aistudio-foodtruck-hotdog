@@ -1,0 +1,24 @@
+{
+    "name": "FoodTruck HotDog",
+    "short_name": "FoodTruck",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#f8f6f6",
+    "theme_color": "#ec4913",
+    "scope": "/",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "/pwa-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/pwa-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

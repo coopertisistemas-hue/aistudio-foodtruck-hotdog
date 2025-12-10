@@ -18,23 +18,31 @@ export const HomeScreen = () => {
 
     const [orgData, setOrgData] = useState<OrgData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [homeError, setHomeError] = useState<any>(null); // Debug state
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         analytics.trackEvent('view_home');
 
         async function load() {
+            setLoading(true);
+            setHomeError(null);
             try {
                 const org = await fetchHomeData();
                 setOrgData(org);
             } catch (err) {
-                console.error(err);
+                console.error('HomeScreen load error:', err);
+                setHomeError(err);
             } finally {
                 setLoading(false);
             }
         }
         load();
     }, []);
+
+    // ... (shortcuts definition kept, not modified here if outside range, but looks like I only target 19-35.
+    // Wait, I need to insert the render block too.
+    // I will replace lines 19 to 64 to include the state + effect + loading + error block.
 
     const shortcuts = [
         { icon: 'lunch_dining', label: 'Lanches', path: '/menu?category=lanches', color: 'bg-orange-100 text-orange-600' },
@@ -59,6 +67,33 @@ export const HomeScreen = () => {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
+
+    if (homeError) {
+        return (
+            <div className="flex items-center justify-center min-h-screen p-4 bg-gray-50">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-lg w-full shadow-lg">
+                    <h2 className="text-red-700 font-bold mb-2 flex items-center gap-2">
+                        <span className="material-symbols-outlined">bug_report</span>
+                        Erro ao carregar Home (DEBUG)
+                    </h2>
+                    <p className="text-red-800 text-sm mb-1 font-mono">Status: {homeError.status}</p>
+                    <p className="text-red-800 text-sm mb-4 font-mono">Function: {homeError.functionName}</p>
+
+                    <div className="bg-gray-900 text-gray-100 p-4 rounded text-xs overflow-auto max-h-[300px] mb-4 font-mono">
+                        <div className="mb-2 text-gray-400 border-b border-gray-700 pb-1">Response Body:</div>
+                        <pre>{JSON.stringify(homeError.responseBody || homeError, null, 2)}</pre>
+                    </div>
+
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="w-full py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold shadow-md active:scale-95 transition-all"
+                    >
+                        Tentar Novamente
+                    </button>
+                </div>
             </div>
         );
     }

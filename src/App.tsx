@@ -52,31 +52,29 @@ const AppContent = () => {
     };
 
     return (
-        <AuthProvider>
-            <MobileContainer
-                bottomNav={shouldShowNav() ? <BottomNav /> : null}
-                floatingCart={<FloatingCart />}
-            >
-                <Routes>
-                    <Route path="/" element={<Navigate to="/foodtruck/home" replace />} />
-                    <Route path="/:slug">
-                        <Route index element={<Navigate to="home" replace />} />
-                        <Route path="splash" element={<SplashScreen />} />
-                        <Route path="login" element={<LoginScreen />} />
-                        <Route path="home" element={<HomeScreen />} />
-                        <Route path="menu" element={<MenuScreen />} />
-                        <Route path="menu/:categoryId" element={<MenuScreen />} />
-                        <Route path="product/:productId" element={<ProductDetailsScreen />} />
-                        <Route path="cart" element={<CartScreen />} />
-                        <Route path="checkout" element={<CheckoutScreen />} />
-                        <Route path="success/:orderId" element={<SuccessScreen />} />
-                        <Route path="orders" element={<OrdersScreen />} />
-                        <Route path="orders/:orderId" element={<OrderDetailScreen />} />
-                        <Route path="wallet" element={<WalletScreen />} />
-                    </Route>
-                </Routes>
-            </MobileContainer>
-        </AuthProvider>
+        <MobileContainer
+            bottomNav={shouldShowNav() ? <BottomNav /> : null}
+            floatingCart={<FloatingCart />}
+        >
+            <Routes>
+                <Route path="/" element={<Navigate to="/foodtruck/home" replace />} />
+                <Route path="/:slug">
+                    <Route index element={<Navigate to="home" replace />} />
+                    <Route path="splash" element={<SplashScreen />} />
+                    <Route path="login" element={<LoginScreen />} />
+                    <Route path="home" element={<HomeScreen />} />
+                    <Route path="menu" element={<MenuScreen />} />
+                    <Route path="menu/:categoryId" element={<MenuScreen />} />
+                    <Route path="product/:productId" element={<ProductDetailsScreen />} />
+                    <Route path="cart" element={<CartScreen />} />
+                    <Route path="checkout" element={<CheckoutScreen />} />
+                    <Route path="success/:orderId" element={<SuccessScreen />} />
+                    <Route path="orders" element={<OrdersScreen />} />
+                    <Route path="orders/:orderId" element={<OrderDetailScreen />} />
+                    <Route path="wallet" element={<WalletScreen />} />
+                </Route>
+            </Routes>
+        </MobileContainer>
     );
 };
 
@@ -86,11 +84,13 @@ export default function App() {
     return (
         <HashRouter>
             <OrgProvider>
-                <FavoritesProvider>
-                    <AppProvider>
-                        <AppContent />
-                    </AppProvider>
-                </FavoritesProvider>
+                <AuthProvider>
+                    <FavoritesProvider>
+                        <AppProvider>
+                            <AppContent />
+                        </AppProvider>
+                    </FavoritesProvider>
+                </AuthProvider>
             </OrgProvider>
         </HashRouter>
     );
