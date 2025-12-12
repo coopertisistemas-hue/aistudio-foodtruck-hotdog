@@ -15,74 +15,40 @@ serve(async (req) => {
         const supabaseUrl = Deno.env.get('SUPABASE_URL')
         const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')
 
-        // 0. Degraded Mode Check (Missing Config)
         if (!supabaseUrl || !supabaseKey) {
-            console.warn('Home data: API Key ou URL ausente no ambiente. Usando dados estáticos (Degraded Mode).')
-            return new Response(
-                JSON.stringify({
-                    success: true,
-                    mode: "degraded",
-                    source: "readdy-home-data-fallback",
-                    org: {
-                        org_id: "preview-id",
-                        name: "FoodTruck Preview (Sem Conexão)",
-                        slug: "preview",
-                        is_open: true,
-                        rating_avg: 5.0,
-                        logo_url: null,
-                        background_image_url: null
-                    },
-                    featuredProduct: null,
-                    categories: [],
-                    highlights: [],
-                    counts: { promos: 0, combos: 0 }
-                }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-            )
+            throw new Error('Missing Supabase configuration');
         }
 
-        // Use ANON Key + Auth Header to respect RLS (view is public/anon accessible)
         const supabaseClient = createClient(
             supabaseUrl,
             supabaseKey,
             { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } }
         )
 
-        const { org_id, slug, userId } = await req.json()
+        const { org_id, slug } = await req.json()
 
-        console.log('Fetching home data (REAL) for:', { org_id, slug })
-
-        // 1. Fetch Org
-        let query = supabaseClient.from('public_org_profiles').select('*')
-        if (org_id) query = query.eq('org_id', org_id)
+        // 1. Fetch Org (from 'orgs' table now)
+        let query = supabaseClient.from('orgs').select('*')
+        if (org_id) query = query.eq('id', org_id) // Changed from org_id to id
         else query = query.eq('slug', slug || 'foodtruck-hotdog')
 
         const { data: org, error: orgError } = await query.maybeSingle()
 
-        if (orgError) throw orgError
+        if (orgError) {
+            console.error('Org Fetch Error:', orgError);
+            throw orgError;
+        }
+
         if (!org) {
-            console.error('Org not found in DB')
             return new Response(
-                JSON.stringify({ error: true, message: 'Organization not found in public_org_profiles' }),
+                JSON.stringify({ error: true, message: 'Org not found' }),
                 { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
             )
         }
 
-        const targetOrgId = org.org_id
+        const targetOrgId = org.id
 
-        // 2. Fetch Featured Product
-        const { data: featuredProduct, error: featError } = await supabaseClient
-            .from('products')
-            .select('id, name, description, price_cents, image_url, is_promo, promo_price_cents')
-            .eq('org_id', targetOrgId)
-            .eq('is_featured', true)
-            .eq('is_available', true)
-            .limit(1)
-            .maybeSingle()
-
-        if (featError) console.error('Featured error:', featError)
-
-        // 3. Categories
+        // 2. Fetch Categories (Menu)
         const { data: categories, error: catError } = await supabaseClient
             .from('categories')
             .select('id, name, icon, display_order')
@@ -92,32 +58,159 @@ serve(async (req) => {
 
         if (catError) console.error('Categories error:', catError)
 
-        // 4. Counts (Optional)
-        // Skipping complex count queries to reduce 500 risk, focusing on core data first.
+        // 3. Fetch Combos/Promos (New)
+        const { data: combos, error: comboError } = await supabaseClient
+            .from('products')
+            .select('*')
+            .eq('org_id', targetOrgId)
+            .or('is_combo.eq.true,is_promo.eq.true')
+            .order('promo_price_cents', { ascending: true }) // Cheap promos first? Or by updated_at?
+            .limit(10)
+
+        if (comboError) console.error('Combos error:', comboError)
+
+        // 4. Construct Branding & Status
+        const branding = {
+            name: org.name,
+            slogan: org.description || "O melhor da cidade",
+            logoUrl: org.logo_url,
+            status: org.is_open !== false ? 'open' : 'closed', // boolean to string
+            statusText: org.is_open !== false ? 'Aberto' : 'Fechado',
+            nextOpen: null, // V2
+            rating: {
+                average: Number(org.rating_avg) || 4.8,
+                count: Number(org.rating_count) || 0
+            },
+            deliveryInfo: {
+                minTime: org.eta_min || 30,
+                maxTime: org.eta_max || 45,
+                fee: Number(org.delivery_fee) || 0,
+                feeText: (!org.delivery_fee || Number(org.delivery_fee) === 0)
+                    ? 'Entrega Grátis'
+                    : `A partir de R$ ${Number(org.delivery_fee).toFixed(2).replace('.', ',')}`
+            }
+        }
+
+        // 5. Construct Theme
+        const theme = {
+            primaryColor: org.primary_color || '#e11d48',
+            secondaryColor: org.secondary_color || '#f59e0b',
+            accentColor: '#22c55e',
+            backgroundColor: '#ffffff',
+            textColor: '#1f2937'
+        }
+
+        // 6. Construct Hero
+        const hero = {
+            videoUrl: org.hero_video_url || null,
+            posterUrl: org.background_image_url || org.banner_url || "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800",
+            headline: branding.slogan,
+            ctaLabel: "Ver Cardápio"
+        }
+
+        // 7. Construct Shortcuts (Dynamic List)
+        // Ensure these IDs match Frontend Icons
+        const shortcuts = [
+            {
+                id: 'menu',
+                label: 'Ver Cardápio',
+                subtitle: 'Ver todos os lanches e combos',
+                icon: 'restaurant_menu',
+                actionType: 'navigate',
+                actionPayload: '/menu',
+                variant: 'primary'
+            },
+            {
+                id: 'combos',
+                label: 'Ofertas & Combos',
+                subtitle: 'Promoções ativas para você',
+                icon: 'local_offer',
+                actionType: 'navigate',
+                actionPayload: '/menu?filter=promos',
+                variant: 'red'
+            },
+            {
+                id: 'orders',
+                label: 'Meus Pedidos',
+                subtitle: 'Acompanhar seus pedidos',
+                icon: 'shopping_bag',
+                actionType: 'navigate',
+                actionPayload: '/orders',
+                variant: 'blue'
+            },
+            {
+                id: 'whatsapp',
+                label: 'WhatsApp',
+                subtitle: 'Falar com a loja',
+                icon: 'chat',
+                actionType: 'link_external',
+                actionPayload: org.whatsapp || org.phone || 'context', // Frontend handles context fallbacks
+                variant: 'green'
+            },
+            {
+                id: 'rating',
+                label: 'Avaliar Loja', // Updated Label
+                subtitle: 'Deixar sua opinião',
+                icon: 'star',
+                actionType: 'navigate',
+                actionPayload: '/orders?action=rate',
+                variant: 'yellow'
+            }
+        ]
+
+        // Deprecated: Remove manual logic below as above list is the standard set now.
+        // shortcuts.push({ ... }) removed.
+
+
+        // 8. Map Promos (Combos)
+        const now = new Date();
+        const promos = (combos || [])
+            .filter((p: any) => {
+                // Time window filter
+                if (p.promo_starts_at && new Date(p.promo_starts_at) > now) return false;
+                if (p.promo_ends_at && new Date(p.promo_ends_at) < now) return false;
+                return true;
+            })
+            .map((p: any) => ({
+                id: p.id,
+                name: p.name,
+                description: p.description,
+                imageUrl: p.image_url,
+                // Map cents to float
+                price: (p.promo_price_cents || p.price_cents || 0) / 100,
+                originalPrice: p.promo_price_cents ? ((p.price_cents || 0) / 100) : null,
+                badge: p.promo_badge_text || (p.is_combo ? 'COMBO' : (p.is_promo ? 'OFERTA' : null)),
+                isBestSeller: p.is_best_seller,
+                startsAt: p.promo_starts_at,
+                endsAt: p.promo_ends_at
+            }))
+
+        const responsePayload = {
+            success: true,
+            mode: "full",
+            org: branding, // New structure
+            theme,
+            hero,
+            shortcuts,
+            categories: (categories || []).map((c: any) => ({
+                id: c.id,
+                name: c.name,
+                icon: c.icon,
+                order: c.display_order
+            })),
+            promos // New array
+        }
 
         return new Response(
-            JSON.stringify({
-                success: true,
-                mode: "full",
-                ok: true, // Legacy compatibility
-                source: 'readdy-home-data-real',
-                org,
-                featuredProduct: featuredProduct ? {
-                    ...featuredProduct,
-                    price: (featuredProduct.price_cents || 0) / 100,
-                    promoPrice: (featuredProduct.promo_price_cents || 0) / 100
-                } : null,
-                categories: categories || [],
-                highlights: [], // Explicitly requested field
-                counts: { promos: 0, combos: 0 }
-            }),
+            JSON.stringify(responsePayload),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
         )
+
     } catch (error) {
         console.error('Edge Function Error:', error)
         return new Response(
-            JSON.stringify({ error: error.message, details: error }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }, // Return 500 or 400
+            JSON.stringify({ error: error.message }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
         )
     }
 })

@@ -28,13 +28,13 @@ serve(async (req) => {
         if (loyalty_amount > 0) {
             if (!user_id) throw new Error('User must be logged in to redeem loyalty points')
 
-            const { data: balanceData } = await supabaseClient
-                .from('loyalty_balances')
-                .select('balance')
-                .eq('user_id', user_id)
+            const { data: profileData } = await supabaseClient
+                .from('profiles')
+                .select('loyalty_balance')
+                .eq('id', user_id)
                 .single()
 
-            const currentBalance = balanceData?.balance || 0
+            const currentBalance = profileData?.loyalty_balance || 0
             if (currentBalance < loyalty_amount) {
                 throw new Error('Insufficient loyalty balance')
             }
@@ -66,18 +66,28 @@ serve(async (req) => {
 
         // 3. Deduct Loyalty Balance if used
         if (loyalty_amount > 0) {
+            // Insert Transaction
             const { error: loyaltyError } = await supabaseClient
                 .from('loyalty_transactions')
                 .insert({
                     user_id,
-                    org_id: 'foodtruck', // TODO: Dynamic
+                    org_id: order.org_id,
                     order_id: orderData.id,
                     amount: -loyalty_amount, // Negative for redemption
                     type: 'redeem',
                     description: `Desconto no pedido #${orderData.id}`
                 })
 
-            if (loyaltyError) console.error('Error deducting loyalty:', loyaltyError)
+            if (loyaltyError) console.error('Error logging loyalty transaction:', loyaltyError)
+
+            // Update Profile Balance manually (since we don't have RPC or Trigger setup in this context yet)
+            const { data: p } = await supabaseClient.from('profiles').select('loyalty_balance').eq('id', user_id).single()
+            if (p) {
+                const newBalance = (Number(p.loyalty_balance) || 0) - Number(loyalty_amount)
+                await supabaseClient.from('profiles').update({
+                    loyalty_balance: newBalance
+                }).eq('id', user_id)
+            }
         }
 
         // 4. Send Push Notification (Mock/Placeholder)

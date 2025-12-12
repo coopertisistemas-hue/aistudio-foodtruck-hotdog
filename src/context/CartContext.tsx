@@ -3,7 +3,7 @@ import { CartItem, Product, Order } from '../types';
 import { createOrderApi, fetchOrdersApi, CreateOrderParams } from '../lib/api/orderApi';
 import { supabase } from '../lib/supabaseClient';
 
-import { useOrg } from './OrgContext';
+import { useOrg } from './BrandingContext';
 import { useAuth } from './AuthContext';
 
 interface AppContextType {
@@ -14,7 +14,7 @@ interface AppContextType {
     clearCart: () => void;
     cartTotal: number;
     orders: Order[];
-    createOrder: (customerData?: any) => Promise<string>;
+    createOrder: (customerData?: any, loyaltyAmount?: number) => Promise<string>;
     refreshOrders: () => Promise<void>;
     // Shared Cart
     sharedCartId: string | null;
@@ -229,12 +229,23 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
     const { user } = useAuth(); // Need to import useAuth at top
 
-    const createOrder = async (customerData?: any) => {
+    const createOrder = async (customerData?: any, loyaltyAmount?: number) => {
         const params: CreateOrderParams = {
             items: cart,
-            total: cartTotal + 5.0, // + delivery fee
+            total: cartTotal + 5.0 - (loyaltyAmount || 0), // Use discounted total for DB record or Full Total?
+            // Usually DB 'total' is Amount To Pay? Or Subtotal?
+            // If strict: 'total' = Pay Amount. 'discount' = Loyalty.
+            // But create-order function might not subtract loyalty from total?
+            // Let's check create-order code again. It inserts `...order`.
+            // Order Payload has `total: params.total`.
+            // If I send `total - discount`, then `orders.total` will be the paid amount.
+            // Which is correct for "Revenue".
+            // But for "Ticket", we might want full value.
+            // For MVP: Send the PAID amount as total.
+
             customer: customerData,
-            userId: user?.id
+            userId: user?.id,
+            loyaltyAmount: loyaltyAmount
         };
 
         const newId = await createOrderApi(params);

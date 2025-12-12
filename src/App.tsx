@@ -2,7 +2,7 @@ import React from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AppProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
-import { OrgProvider } from './context/OrgContext';
+import { BrandingProvider } from './context/BrandingContext';
 import { FavoritesProvider } from './context/FavoritesContext';
 import { BottomNav, FloatingCart, MobileContainer } from './components';
 import {
@@ -16,8 +16,10 @@ import {
     OrdersScreen,
     OrderDetailScreen,
     LoginScreen,
+    RegisterScreen,
     WalletScreen,
 } from './pages';
+import { ProfileScreen } from './pages/ProfileScreen';
 
 import OneSignal from 'react-onesignal';
 
@@ -47,6 +49,7 @@ const AppContent = () => {
         if (path.includes('/home')) return true;
         if (path.includes('/menu')) return true;
         if (path.endsWith('/orders')) return true;
+        if (path.includes('/profile')) return true;
         if (path.includes('/wallet')) return true;
         return false;
     };
@@ -62,6 +65,7 @@ const AppContent = () => {
                     <Route index element={<Navigate to="home" replace />} />
                     <Route path="splash" element={<SplashScreen />} />
                     <Route path="login" element={<LoginScreen />} />
+                    <Route path="register" element={<RegisterScreen />} />
                     <Route path="home" element={<HomeScreen />} />
                     <Route path="menu" element={<MenuScreen />} />
                     <Route path="menu/:categoryId" element={<MenuScreen />} />
@@ -71,6 +75,7 @@ const AppContent = () => {
                     <Route path="success/:orderId" element={<SuccessScreen />} />
                     <Route path="orders" element={<OrdersScreen />} />
                     <Route path="orders/:orderId" element={<OrderDetailScreen />} />
+                    <Route path="profile" element={<ProfileScreen />} />
                     <Route path="wallet" element={<WalletScreen />} />
                 </Route>
             </Routes>
@@ -83,7 +88,7 @@ const AppContent = () => {
 export default function App() {
     return (
         <HashRouter>
-            <OrgProvider>
+            <BrandingProvider>
                 <AuthProvider>
                     <FavoritesProvider>
                         <AppProvider>
@@ -91,7 +96,7 @@ export default function App() {
                         </AppProvider>
                     </FavoritesProvider>
                 </AuthProvider>
-            </OrgProvider>
+            </BrandingProvider>
         </HashRouter>
     );
 }

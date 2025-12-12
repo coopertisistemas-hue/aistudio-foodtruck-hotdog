@@ -36,12 +36,37 @@ export const WalletScreen = () => {
                 return;
             }
 
-            // Fetch Profile & Favorites
-            const { profile: userProfile, favorites: userFavorites } = await fetchUserProfile();
-            setProfile(userProfile);
-            setFavorites(userFavorites);
+            // 1. Fetch Profile (Balance)
+            const { data: profileData } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single();
 
-            // Fetch Transactions (Keep existing logic or move to API if needed, but keeping as is for now)
+            if (profileData) {
+                setProfile({
+                    ...profileData,
+                    loyalty_balance: Number(profileData.loyalty_balance || 0)
+                });
+            }
+
+            // 2. Fetch Favorites matches
+            // (Assuming we stick to local favorites or existing logic, keeping it simple for now as per prev code)
+            // But since I am replacing the block:
+            const { data: favData } = await supabase
+                .from('user_favorites')
+                .select('product_id, products(*)') // Expand products
+                .eq('user_id', user.id);
+
+            if (favData) {
+                setFavorites(favData.filter((f: any) => f.products).map((f: any) => ({
+                    user_id: user.id,
+                    product_id: f.product_id,
+                    product: f.products
+                })));
+            }
+
+            // 3. Fetch Transactions
             const { data: txData } = await supabase
                 .from('loyalty_transactions')
                 .select('*')
@@ -49,7 +74,10 @@ export const WalletScreen = () => {
                 .order('created_at', { ascending: false });
 
             if (txData) {
-                setTransactions(txData);
+                setTransactions(txData.map((t: any) => ({
+                    ...t,
+                    amount: Number(t.amount)
+                })));
             }
 
         } catch (error) {

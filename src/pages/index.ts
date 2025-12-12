@@ -8,4 +8,6 @@ export * from './SuccessScreen';
 export * from './OrdersScreen';
 export * from './OrderDetailScreen';
 export * from './LoginScreen';
+export * from './RegisterScreen';
 export * from './WalletScreen';
+export * from './ProfileScreen';

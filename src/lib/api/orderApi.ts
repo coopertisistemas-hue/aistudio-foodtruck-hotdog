@@ -13,6 +13,7 @@ export interface CreateOrderParams {
     };
     paymentMethod?: string;
     userId?: string;
+    loyaltyAmount?: number;
 }
 
 export async function createOrderApi(params: CreateOrderParams): Promise<string> {
@@ -40,7 +41,8 @@ export async function createOrderApi(params: CreateOrderParams): Promise<string>
     const { data, error } = await supabase.functions.invoke('create-order', {
         body: {
             order: orderPayload,
-            items: itemsPayload
+            items: itemsPayload,
+            loyalty_amount: params.loyaltyAmount || 0
         }
     });
 

@@ -1,14 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
+import { useApp } from '../context/CartContext';
+import { useBranding } from '../context/BrandingContext';
 import { TopAppBar, ProductCard } from '../components';
 import { fetchMenu } from '../lib/api/menuApi';
 import { Product, Category } from '../types';
 import { analytics } from '../lib/analytics';
 
 export const MenuScreen = () => {
-    const { categoryId } = useParams();
+    const { categoryId, slug } = useParams();
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
+    const { addToCart, cart } = useApp();
+    const { branding } = useBranding();
+
+    const handleAddToCart = async (product: Product) => {
+        console.log('Added to cart:', product.id, product.name);
+        await addToCart(product, 1);
+    };
 
     const q = searchParams.get('q') || '';
     const activeCategory = searchParams.get('category') || 'todos';
@@ -62,9 +71,30 @@ export const MenuScreen = () => {
         activeCategory === 'todos' ? true : p.categoryId === activeCategory
     );
 
+    const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+
     return (
         <div className="flex flex-col min-h-screen pb-24 bg-gray-50 dark:bg-[#121212]">
-            <TopAppBar title="Cardápio" showBack />
+            <TopAppBar
+                title="Cardápio"
+                showBack
+                rightElement={
+                    <button
+                        onClick={() => navigate(`/${slug || branding.id || 'foodtruck-hotdog'}/cart`)}
+                        className="relative p-2 text-gray-600 dark:text-gray-300 active:scale-95 transition-transform"
+                    >
+                        <span className="material-symbols-outlined text-2xl">shopping_cart</span>
+                        {cartCount > 0 && (
+                            <span
+                                className="absolute top-1 right-0 size-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-sm"
+                                style={{ backgroundColor: branding.accentColor || '#ef4444' }}
+                            >
+                                {cartCount}
+                            </span>
+                        )}
+                    </button>
+                }
+            />
 
             <main className="p-4 space-y-4">
                 {/* Search */}
@@ -128,7 +158,11 @@ export const MenuScreen = () => {
                     )}
 
                     {!loading && displayedProducts.map(product => (
-                        <ProductCard key={product.id} product={product} />
+                        <ProductCard
+                            key={product.id}
+                            product={product}
+                            onAdd={() => handleAddToCart(product)}
+                        />
                     ))}
                 </div>
             </main>

@@ -1,4 +1,4 @@
-import { useOrg } from '../context/OrgContext';
+import { useOrg } from '../context/BrandingContext';
 import { BrandConfig } from '../config/brands/types';
 
 export const useBrand = (): BrandConfig => {

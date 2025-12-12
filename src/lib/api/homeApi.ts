@@ -3,12 +3,70 @@ import { OrgData, Category, Product } from '../../types';
 
 const ORG_ID = import.meta.env.VITE_ORG_ID_FOODTRUCK as string;
 
+export interface HomeShortcut {
+    id: string;
+    label: string;
+    subtitle?: string;
+    icon: string;
+    actionType: 'navigate' | 'link_external' | 'action';
+    actionPayload: string;
+    variant?: 'primary' | 'blue' | 'red' | 'yellow' | 'green' | 'default';
+}
+
+export interface HomeTheme {
+    primaryColor: string;
+    secondaryColor: string;
+    accentColor: string;
+    backgroundColor: string;
+    textColor: string;
+}
+
+export interface HomeHero {
+    videoUrl: string | null;
+    posterUrl: string | null;
+    headline: string;
+    ctaLabel: string;
+}
+
+export interface HomeOrg {
+    name: string;
+    slogan: string;
+    status: 'open' | 'closed';
+    statusText: string;
+    rating: { average: number; count: number };
+    logoUrl: string | null;
+    deliveryInfo: {
+        minTime: number;
+        maxTime: number;
+        fee: number;
+        feeText: string;
+    };
+    nextOpen: string | null;
+}
+
+export interface HomePromoCard {
+    id: string;
+    name: string;
+    description: string;
+    imageUrl: string;
+    price: number;
+    originalPrice?: number | null;
+    badge?: string;
+    isBestSeller?: boolean;
+    link?: string;
+    startsAt?: string;
+    endsAt?: string;
+}
+
 export interface HomePayload {
-    org: OrgData;
-    categories: Category[];
-    featuredProduct: Product | null;
-    mode: 'full' | 'degraded';
     success: boolean;
+    mode: 'full' | 'degraded';
+    org: HomeOrg;
+    theme: HomeTheme;
+    hero: HomeHero;
+    shortcuts: HomeShortcut[];
+    categories: Category[];
+    promos: HomePromoCard[];
 }
 
 export async function fetchHomeData(): Promise<HomePayload> {
@@ -23,84 +81,43 @@ export async function fetchHomeData(): Promise<HomePayload> {
     if (error) {
         console.error('Error fetching home data:', error);
 
-        // Capture detailed info for Debug Mode
+        // Debug handling
         let responseBody = 'No details available';
         let status = 500;
-
         if ((error as any).context && typeof (error as any).context.json === 'function') {
-            try {
-                // Try to parse the error response body from the Edge Function
-                responseBody = await (error as any).context.json();
-            } catch (e) {
-                responseBody = 'Could not parse JSON error body';
-            }
+            try { responseBody = await (error as any).context.json(); } catch (e) { responseBody = 'Could not parse JSON error body'; }
         }
-
         if ((error as any).context && (error as any).context.status) {
             status = (error as any).context.status;
         }
 
-        const debugError = {
+        throw {
             type: 'functions-http-error',
             functionName: 'readdy-home-data',
             status,
             message: error.message,
             responseBody
         };
-
-        console.log('Debug Error Object:', debugError);
-        throw debugError;
     }
 
-    const orgRaw = data.org || {};
-
-    // Map backend fields to frontend OrgData interface
-    const mappedOrg: OrgData = {
-        id: orgRaw.org_id,
-        name: orgRaw.name,
-        slug: orgRaw.slug,
-        status: orgRaw.is_open ? 'open' : 'closed',
-        rating: orgRaw.rating_avg || 0,
-        delivery_time_min: orgRaw.eta_min || 0,
-        delivery_time_max: orgRaw.eta_max || 0,
-        banner_url: orgRaw.background_image_url || orgRaw.logo_url, // Fallback
-        highlight: undefined,
-    };
-
-    // Map Categories
-    const categories: Category[] = (data.categories || []).map((c: any) => {
-        const rawName = c.name || '';
-        return {
-            id: c.id,
-            name: mapCategoryName(rawName),
-            description: c.description || '',
-            icon: c.icon || mapCategoryIcon(rawName),
-            productCount: 0
-        };
-    });
-
-    // Map Featured Product
-    let featuredProduct: Product | null = null;
-    if (data.featuredProduct) {
-        const fp = data.featuredProduct;
-        featuredProduct = {
-            id: fp.id,
-            name: fp.name,
-            description: fp.description,
-            price: fp.price || 0,
-            image: fp.image_url,
-            categoryId: 'featured',
-            is_promotion: fp.is_promo,
-            promotional_price: fp.promoPrice
-        };
-    }
+    // Mapper: Ensure clean data types from backend response
+    const categories: Category[] = (data.categories || []).map((c: any) => ({
+        id: c.id,
+        name: mapCategoryName(c.name),
+        description: '',
+        icon: c.icon || mapCategoryIcon(c.name),
+        productCount: 0
+    }));
 
     return {
-        org: mappedOrg,
+        success: data.success,
+        mode: data.mode,
+        org: data.org,
+        theme: data.theme || { primaryColor: '#e11d48', secondaryColor: '#f59e0b', accentColor: '#22c55e', backgroundColor: '#ffffff', textColor: '#1f2937' },
+        hero: data.hero || { videoUrl: null, posterUrl: null, headline: 'Bem-vindo', ctaLabel: 'Ver Cardápio' },
+        shortcuts: data.shortcuts || [],
         categories,
-        featuredProduct,
-        mode: data.mode || 'full',
-        success: data.success || true
+        promos: data.promos || []
     };
 }
 

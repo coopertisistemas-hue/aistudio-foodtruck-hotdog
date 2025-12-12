@@ -1,240 +1,139 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useBranding } from '../context/BrandingContext';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabaseClient';
-import { TopAppBar, RatingModal } from '../components';
-import { useBrand } from '../hooks/useBrand';
-import { fetchOrdersApi, isOrderRated, setOrderRated, Order } from '../lib/api/orderApi';
-import { createOrderRatingApi } from '../lib/api/ratingsApi';
-import { analytics } from '../lib/analytics';
-import { toast } from 'sonner';
+import { getCustomerOrders } from '../lib/api/orders';
+import { Order } from '../types';
+import { TopAppBar, BottomNav } from '../components';
 
 export const OrdersScreen = () => {
-    const { user } = useAuth();
     const navigate = useNavigate();
-    const brand = useBrand();
+    const { branding } = useBranding();
+    const { user } = useAuth();
+
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const [ratingModalOpen, setRatingModalOpen] = useState(false);
-    const [selectedOrderId, setSelectedOrderId] = useState<string | number | null>(null);
-    const [ratedOrderIds, setRatedOrderIds] = useState<Set<string | number>>(new Set());
     useEffect(() => {
-        analytics.trackEvent('view_orders');
-
-        if (!user) {
-            setLoading(false);
-            return;
-        }
-
-        const fetchOrders = async () => {
-            try {
-                const data = await fetchOrdersApi(user.id);
-                setOrders(data);
-
-                // Check local storage for rated status
-                const rated = new Set<string | number>();
-                data.forEach(o => {
-                    if (isOrderRated(o.id)) rated.add(o.id);
-                });
-                setRatedOrderIds(rated);
-            } catch (error) {
-                console.error('Error fetching orders:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchOrders();
-
-        // Realtime subscription
-        const subscription = supabase
-            .channel('orders_channel')
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'orders',
-                    filter: `user_id=eq.${user.id}`,
-                },
-                (payload) => {
-                    if (payload.eventType === 'INSERT') {
-                        setOrders((prev) => [payload.new as any, ...prev]);
-                    } else if (payload.eventType === 'UPDATE') {
-                        setOrders((prev) =>
-                            prev.map((order) =>
-                                order.id === payload.new.id ? { ...order, ...payload.new } : order
-                            )
-                        );
-                    }
-                }
-            )
-            .subscribe();
-
-        return () => {
-            subscription.unsubscribe();
-        };
+        loadOrders();
     }, [user]);
 
-    const handleRateClick = (e: React.MouseEvent, orderId: string | number) => {
-        e.stopPropagation();
-        setSelectedOrderId(orderId);
-        setRatingModalOpen(true);
-    };
-
-    const handleRatingSubmit = async (data: any) => {
-        if (!selectedOrderId) return;
-
+    const loadOrders = async () => {
+        setLoading(true);
         try {
-            // Use brand.id or fallback to env logic if necessary. 
-            // In this specific project, orgId is usually fixed or comes from brand context.
-            const orgId = brand.id || (import.meta.env.VITE_ORG_ID_FOODTRUCK as string);
-
-            await createOrderRatingApi({
-                orderId: selectedOrderId,
-                orgId: orgId,
-                customerId: user?.id,
-                ratingOverall: data.rating,
-                ratingService: data.subRatings?.service,
-                ratingDelivery: data.subRatings?.delivery,
-                ratingFood: data.subRatings?.food,
-                comment: data.comment,
-                source: 'client_app'
+            const phone = localStorage.getItem('last_customer_phone');
+            const data = await getCustomerOrders({
+                userId: user?.id,
+                customerPhone: phone || undefined
             });
-
-            setOrderRated(selectedOrderId);
-            setRatedOrderIds(prev => new Set(prev).add(selectedOrderId));
-            toast.success('Avaliação enviada com sucesso!');
+            setOrders(data);
         } catch (error) {
-            console.error('Rating error:', error);
-            toast.error('Não foi possível enviar a avaliação. Tente novamente.');
-            throw error;
+            console.error('Failed to load orders', error);
+        } finally {
+            setLoading(false);
         }
     };
 
-    const getStatusStyle = (status: string) => {
+    const StatusChip = ({ status }: { status: string }) => {
+        let color = branding.secondaryColor || 'gray';
+        let bg = `${branding.secondaryColor}15` || '#f3f4f6';
+        let label = status;
+
         switch (status) {
-            case 'preparing':
-                return { backgroundColor: `${brand.warningColor}20`, color: brand.warningColor };
-            case 'ready':
-                return { backgroundColor: `${brand.warningColor}30`, color: brand.warningColor };
-            case 'delivered':
-                return { backgroundColor: `${brand.successColor}20`, color: brand.successColor };
-            case 'cancelled':
-                return { backgroundColor: `${brand.dangerColor}20`, color: brand.dangerColor };
-            default:
-                return { backgroundColor: '#f3f4f6', color: '#374151' };
+            case 'Recebido':
+                label = 'Recebido';
+                color = branding.secondaryColor;
+                break;
+            case 'Em Preparo':
+                label = 'Em Preparo';
+                color = branding.primaryColor;
+                bg = `${branding.primaryColor}15`;
+                break;
+            case 'Pronto':
+            case 'A caminho':
+                label = 'A caminho';
+                color = branding.accentColor || '#22c55e';
+                bg = `${branding.accentColor}15`;
+                break;
+            case 'Entregue':
+                label = 'Entregue';
+                color = '#15803d'; // Green-700
+                bg = '#dcfce7';
+                break;
+            case 'Cancelado':
+                color = '#b91c1c';
+                bg = '#fee2e2';
+                break;
         }
-    };
 
-    if (loading) return <div className="p-8 text-center flex items-center justify-center h-screen"><div className="size-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
-
-    if (!user) {
         return (
-            <div className="flex flex-col min-h-screen pb-24">
-                <TopAppBar title="Meus Pedidos" showBack />
-                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                    <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">lock</span>
-                    <h2 className="text-xl font-bold text-gray-800 mb-2">Faça login para ver seus pedidos</h2>
-                    <p className="text-gray-500 mb-6">Acompanhe o status e histórico dos seus pedidos.</p>
-                    <button
-                        onClick={() => navigate('/login')}
-                        className="bg-primary text-white font-bold py-3 px-8 rounded-xl shadow-lg"
-                        style={{ backgroundColor: brand.primaryColor }}
-                    >
-                        Entrar agora
-                    </button>
-                </div>
-            </div>
+            <span
+                className="px-2 py-1 rounded text-xs font-bold uppercase tracking-wide"
+                style={{ color, backgroundColor: bg }}
+            >
+                {label}
+            </span>
         );
-    }
+    };
 
     return (
-        <div className="flex flex-col min-h-screen pb-24 bg-gray-50 dark:bg-[#121212]">
-            <TopAppBar title="Meus Pedidos" showBack />
+        <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
+            <TopAppBar title="Meus Pedidos" />
 
-            <main className="p-4 space-y-4">
-                {orders.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in duration-300">
-                        <div className="size-20 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-6">
-                            <span className="material-symbols-outlined text-4xl text-gray-400">receipt_long</span>
-                        </div>
-                        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">Nenhum pedido por aqui</h2>
-                        <p className="text-gray-500 mb-8 max-w-[200px]">Você ainda não realizou nenhum pedido conosco.</p>
-
+            <main className="flex-1 p-4">
+                {loading ? (
+                    <div className="space-y-4">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="h-24 bg-gray-200 rounded-xl animate-pulse" />
+                        ))}
+                    </div>
+                ) : orders.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-[60vh] text-center p-8 opacity-60">
+                        <span className="material-symbols-outlined text-gray-400 text-6xl mb-4">receipt_long</span>
+                        <h3 className="text-lg font-bold mb-2">Nenhum pedido ainda</h3>
+                        <p className="text-sm mb-6">Que tal experimentar nossas delícias?</p>
                         <button
-                            onClick={() => navigate('/menu')}
-                            className="bg-primary text-white font-bold py-3 px-8 rounded-xl shadow-lg active:scale-95 transition-transform"
+                            onClick={() => navigate(`/${branding.id}/menu`)}
+                            className="px-6 py-3 rounded-xl font-bold text-white shadow-lg"
+                            style={{ backgroundColor: branding.primaryColor }}
                         >
-                            Fazer meu primeiro pedido
+                            Ver Cardápio
                         </button>
                     </div>
                 ) : (
-                    orders.map((order) => (
-                        <div
-                            key={order.id}
-                            onClick={() => navigate(`/orders/${order.id}`)}
-                            className="bg-white dark:bg-card-dark p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-white/5 cursor-pointer active:scale-[0.99] transition-transform"
-                        >
-                            <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <h3 className="font-bold text-lg">Pedido #{order.id}</h3>
-                                    <p className="text-sm text-gray-500">
-                                        {new Date(order.created_at || new Date()).toLocaleDateString('pt-BR')} às {new Date(order.created_at || new Date()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                    </p>
+                    <div className="space-y-4">
+                        {orders.map(order => (
+                            <div
+                                key={order.id}
+                                onClick={() => navigate(`/${branding.id}/orders/${order.id}`)}
+                                className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 active:scale-[0.99] transition-transform"
+                            >
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="flex flex-col">
+                                        <span className="text-xs text-gray-400 font-bold">{order.order_code || `#${order.id}`}</span>
+                                        <span className="text-sm font-bold text-gray-800">{order.date}</span>
+                                    </div>
+                                    <StatusChip status={order.status} />
                                 </div>
-                                <span className="font-bold text-lg">R$ {order.total.toFixed(2).replace('.', ',')}</span>
+                                <div className="text-sm text-gray-600 mb-2 line-clamp-1">
+                                    {order.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
+                                </div>
+                                <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-50">
+                                    <span className="text-xs text-gray-400">Total</span>
+                                    <span className="font-bold text-green-600">
+                                        R$ {order.total.toFixed(2).replace('.', ',')}
+                                    </span>
+                                </div>
                             </div>
-
-                            <div className="flex justify-between items-center mt-4">
-                                <span
-                                    className="px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5"
-                                    style={getStatusStyle(order.status)}
-                                >
-                                    <span className="size-1.5 rounded-full bg-current"></span>
-                                    {order.status === 'pending' ? 'Pendente' :
-                                        order.status === 'preparing' ? 'Em Preparo' :
-                                            order.status === 'ready' ? 'Saiu para Entrega' :
-                                                order.status === 'delivered' ? 'Entregue' : order.status}
-                                </span>
-
-                                {order.status === 'delivered' ? (
-                                    ratedOrderIds.has(order.id) ? (
-                                        <span className="text-xs font-bold text-green-600 flex items-center gap-1">
-                                            <span className="material-symbols-outlined text-sm">check_circle</span>
-                                            Avaliado
-                                        </span>
-                                    ) : (
-                                        <button
-                                            onClick={(e) => handleRateClick(e, order.id)}
-                                            className="text-xs font-bold px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors text-primary"
-                                        >
-                                            Avaliar pedido
-                                        </button>
-                                    )
-                                ) : (
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); navigate(`/orders/${order.id}`); }}
-                                        className="text-xs font-bold px-3 py-1.5 rounded-lg text-white shadow-sm active:scale-95 transition-transform flex items-center gap-1"
-                                        style={{ backgroundColor: brand.primaryColor }}
-                                    >
-                                        <span className="material-symbols-outlined text-sm">visibility</span>
-                                        Acompanhar
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    ))
+                        ))}
+                    </div>
                 )}
             </main>
 
-            <RatingModal
-                isOpen={ratingModalOpen}
-                onClose={() => setRatingModalOpen(false)}
-                onSubmit={handleRatingSubmit}
-                orderId={selectedOrderId || ''}
-            />
+            {/* Force BottomNav to appear since we are in a main tab */}
+            <div className="fixed bottom-0 w-full z-20">
+                <BottomNav />
+            </div>
         </div>
     );
 };

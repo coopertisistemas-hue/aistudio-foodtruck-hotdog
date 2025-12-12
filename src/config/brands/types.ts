@@ -16,5 +16,7 @@ export interface BrandConfig {
     addressLine?: string;
     openingHours?: string;
     instagramUrl?: string;
+    instagramUrl?: string;
     backgroundImage?: string; // For banners or backgrounds
+    backgroundVideoUrl?: string; // For hero video
 }

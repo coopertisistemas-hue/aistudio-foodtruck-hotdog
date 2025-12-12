@@ -56,7 +56,7 @@ export async function fetchMenu(filters?: MenuFilters) {
         return { categories: cachedCategories, products: cachedProducts };
     }
 
-    const { data, error } = await supabase.functions.invoke('readdy-menu', {
+    const { data, error } = await supabase.functions.invoke('get-menu', {
         body: { orgId: ORG_ID, ...filters }
     });
 

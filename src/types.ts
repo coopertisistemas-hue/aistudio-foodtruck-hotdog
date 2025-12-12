@@ -87,8 +87,11 @@ export interface OrgData {
   status: 'open' | 'closed';
   rating: number;
   delivery_time_min: number;
+  delivery_time_min: number;
   delivery_time_max: number;
   banner_url: string;
+  primary_color?: string; // Hex code, e.g. #FF0000
+  hero_video_url?: string; // Full URL to mp4
   highlight?: {
     id: string;
     title: string;

@@ -7,9 +7,10 @@ import { useFavorites } from '../context/FavoritesContext';
 
 interface ProductCardProps {
     product: Product;
+    onAdd?: () => void;
 }
 
-export const ProductCard = ({ product }: ProductCardProps) => {
+export const ProductCard = ({ product, onAdd }: ProductCardProps) => {
     const navigate = useNavigate();
     const brand = useBrand();
     const { isFavorite, toggleFavorite } = useFavorites();
@@ -62,7 +63,11 @@ export const ProductCard = ({ product }: ProductCardProps) => {
                         )}
                     </div>
                     <button
-                        onClick={() => navigate(`/product/${product.id}`)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (onAdd) onAdd();
+                            else navigate(`/product/${product.id}`);
+                        }}
                         className="size-8 rounded-full text-white flex items-center justify-center shadow-lg active:scale-95"
                         style={{ backgroundColor: brand.primaryColor, boxShadow: `0 10px 15px -3px ${brand.primaryColor}40` }}
                     >
