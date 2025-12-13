@@ -26,29 +26,66 @@ export const HomeScreen = () => {
 
     useEffect(() => {
         analytics.trackEvent('view_home_dashboard');
-        async function load() {
-            // Wait for org to be resolved
-            if (!homeData && contextOrg?.logo_url) return; // Optimization? No, rely on homeData null check
 
-            // If org is not loaded yet (from OrgProvider), we wait.
-            // But OrgProvider gives us an "org" object.
-            // Check if org is ready
-            const currentOrgId = contextOrg?.id;
-            if (!currentOrgId) return;
+        let isMounted = true;
+        const loadRef = { current: true };
 
-            setLoading(true);
+        const load = async () => {
+            console.log('HomeScreen: load() called', { contextOrg, branding });
+
+            if (!contextOrg?.id) {
+                console.log('HomeScreen: No contextOrg.id yet');
+                return;
+            }
+
+            // Prevent re-fetch if we already have data for this org (unless force refresh needed)
+            if (homeData && homeData.org.id === contextOrg.id) {
+                console.log('HomeScreen: Already have data');
+                setLoading(false);
+                loadRef.current = false;
+                return;
+            }
+
             try {
-                const payload = await fetchHomeData(currentOrgId);
-                setHomeData(payload);
+                // setLoading(true); // Don't reset loading to true if we are just switching context fast, causes flicker.
+                // But for now, keep it simple.
+
+                console.log('HomeScreen: Fetching home data for', contextOrg.id);
+                const payload = await fetchHomeData(contextOrg.id);
+
+                if (isMounted) {
+                    console.log('HomeScreen: Data fetched successfully');
+                    setHomeData(payload);
+                    setError(null);
+                }
             } catch (err: any) {
                 console.error('HomeScreen load error:', err);
-                setError(err.message || 'Erro ao carregar dados da loja');
+                if (isMounted) setError(err.message || 'Erro ao carregar dados da loja');
             } finally {
-                setLoading(false);
+                if (isMounted) {
+                    setLoading(false);
+                    loadRef.current = false;
+                }
             }
-        }
+        };
+
+        // Safety timeout
+        const timeout = setTimeout(() => {
+            if (isMounted && loadRef.current) {
+                console.warn('HomeScreen: Loading timed out (Ref check)');
+                // Don't force error, maybe just stop spinner?
+                // setError('Tempo limite excedido');
+                // setLoading(false);
+            }
+        }, 8000);
+
         load();
-    }, [contextOrg, branding]); // Re-run when org/branding changes
+
+        return () => {
+            isMounted = false;
+            clearTimeout(timeout);
+        };
+    }, [contextOrg, branding]);
 
     const handleWhatsApp = () => {
         const phone = branding.whatsappNumber || brand.whatsappNumber;

@@ -19,6 +19,7 @@ import {
     LoginScreen,
     RegisterScreen,
     WalletScreen,
+    LandingScreen,
 } from './pages';
 import { ProfileScreen } from './pages/ProfileScreen';
 
@@ -65,13 +66,7 @@ const AppContent = () => {
             floatingCart={<FloatingCart />}
         >
             <Routes>
-                <Route path="/" element={
-                    <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-                        <h1 className="text-xl font-bold mb-4">Delivery Connect</h1>
-                        <p className="mb-4">Selecione um estabelecimento:</p>
-                        <a href="/#/foodtruck-hotdog/home" className="text-blue-500 underline">FoodTruck HotDog</a>
-                    </div>
-                } />
+                <Route path="/" element={<LandingScreen />} />
                 <Route path="/:slug">
                     <Route index element={<Navigate to="home" replace />} />
                     <Route path="splash" element={<SplashScreen />} />
