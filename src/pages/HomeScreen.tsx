@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useBrand } from '../hooks/useBrand';
 import { useBranding } from '../context/BrandingContext';
 import { fetchHomeData, HomePayload } from '../lib/api/homeApi';
+import { useOrg } from '../context/OrgContext';
 import { buildWhatsAppLink } from '../lib/whatsappUtils';
 import { useAbandonedCart } from '../hooks/useAbandonedCart';
 import { analytics } from '../lib/analytics';
@@ -12,6 +13,7 @@ export const HomeScreen = () => {
     const navigate = useNavigate();
     const brand = useBrand(); // Legacy hook, can be removed eventually
     const { branding } = useBranding(); // New Dynamic Branding
+    const { org: contextOrg, orgSlug } = useOrg(); // Context Org
 
     const [homeData, setHomeData] = useState<HomePayload | null>(null);
     const [loading, setLoading] = useState(true);
@@ -24,9 +26,18 @@ export const HomeScreen = () => {
     useEffect(() => {
         analytics.trackEvent('view_home_dashboard');
         async function load() {
+            // Wait for org to be resolved
+            if (!homeData && contextOrg?.logo_url) return; // Optimization? No, rely on homeData null check
+
+            // If org is not loaded yet (from OrgProvider), we wait.
+            // But OrgProvider gives us an "org" object.
+            // Check if org is ready
+            const currentOrgId = contextOrg?.id;
+            if (!currentOrgId) return;
+
             setLoading(true);
             try {
-                const payload = await fetchHomeData();
+                const payload = await fetchHomeData(currentOrgId);
                 setHomeData(payload);
             } catch (err) {
                 console.error('HomeScreen load error:', err);
@@ -35,7 +46,7 @@ export const HomeScreen = () => {
             }
         }
         load();
-    }, []);
+    }, [contextOrg, branding]); // Re-run when org/branding changes
 
     const handleWhatsApp = () => {
         const phone = branding.whatsappNumber || brand.whatsappNumber;
@@ -53,7 +64,7 @@ export const HomeScreen = () => {
     }
 
     if (!homeData) return null;
-    const { org, categories, hero, theme } = homeData;
+    const { org: homeOrg, categories, hero, theme } = homeData;
 
     // Default Visuals (Fallback for Multi-tenancy)
     const DEFAULT_VIDEO = "https://cdn.coverr.co/videos/coverr-hamburger-and-fries-1564/1080p.mp4";
@@ -91,10 +102,10 @@ export const HomeScreen = () => {
                     <div className="flex items-start gap-4">
                         {/* Logo */}
                         <div className="size-16 rounded-full border-2 border-gray-100 dark:border-gray-700 shadow-md overflow-hidden bg-white shrink-0 relative mt-1">
-                            {org.logoUrl ? (
-                                <img src={org.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                            {homeOrg.logoUrl ? (
+                                <img src={homeOrg.logoUrl} alt="Logo" className="w-full h-full object-cover" />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 font-bold text-xl">{org.name.substring(0, 2)}</div>
+                                <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 font-bold text-xl">{homeOrg.name.substring(0, 2)}</div>
                             )}
                         </div>
 
@@ -103,34 +114,34 @@ export const HomeScreen = () => {
                             {/* Header: Title & Status */}
                             <div className="flex items-start justify-between">
                                 <h1 className="text-xl font-black text-gray-900 dark:text-white leading-tight line-clamp-2 pr-2">
-                                    {org.name}
+                                    {homeOrg.name}
                                 </h1>
-                                <span className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border flex items-center gap-1.5 ${org.status === 'open' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-                                    <span className={`size-1.5 rounded-full ${org.status === 'open' ? 'bg-green-600 animate-pulse' : 'bg-gray-500'}`}></span>
-                                    {org.status === 'open' ? 'Aberto' : 'Fechado'}
+                                <span className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border flex items-center gap-1.5 ${homeOrg.status === 'open' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                    <span className={`size-1.5 rounded-full ${homeOrg.status === 'open' ? 'bg-green-600 animate-pulse' : 'bg-gray-500'}`}></span>
+                                    {homeOrg.status === 'open' ? 'Aberto' : 'Fechado'}
                                 </span>
                             </div>
 
                             {/* Slogan */}
                             <p className="text-xs text-gray-500 font-medium leading-relaxed line-clamp-2">
-                                {org.slogan || hero?.headline || DEFAULT_HEADLINE}
+                                {homeOrg.slogan || hero?.headline || DEFAULT_HEADLINE}
                             </p>
 
                             {/* Info Row: Rating & Delivery */}
                             <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-gray-700 dark:text-gray-300 mt-1">
                                 <div className="flex items-center gap-1 text-yellow-500">
                                     <span className="material-symbols-outlined text-[16px] fill-current">star</span>
-                                    <span className="text-gray-900 dark:text-white">{org.rating?.average?.toFixed(1) || '4.8'}</span>
-                                    <span className="text-gray-400 font-normal">({org.rating?.count || 120})</span>
+                                    <span className="text-gray-900 dark:text-white">{homeOrg.rating?.average?.toFixed(1) || '4.8'}</span>
+                                    <span className="text-gray-400 font-normal">({homeOrg.rating?.count || 120})</span>
                                 </div>
                                 <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
                                 <div className="flex items-center gap-1">
                                     <span className="material-symbols-outlined text-[16px] text-gray-400">schedule</span>
-                                    {org.deliveryInfo?.minTime}-{org.deliveryInfo?.maxTime} min
+                                    {homeOrg.deliveryInfo?.minTime}-{homeOrg.deliveryInfo?.maxTime} min
                                 </div>
                                 <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
                                 <div className="text-green-600 dark:text-green-400">
-                                    {org.deliveryInfo?.feeText}
+                                    {homeOrg.deliveryInfo?.feeText}
                                 </div>
                             </div>
                         </div>
@@ -142,17 +153,17 @@ export const HomeScreen = () => {
                             // Fix: Ensure navigation retains the tenant slug
                             onClick={() => {
                                 console.log('Hero Button clicked: Navigate to Menu');
-                                navigate(`/${branding.id || 'foodtruck-hotdog'}/menu`);
+                                navigate(`/${orgSlug || 'foodtruck-hotdog'}/menu`);
                             }}
-                            className={`w-full py-3.5 px-4 rounded-xl font-black text-sm uppercase tracking-wide shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2 ${org.status === 'open'
+                            className={`w-full py-3.5 px-4 rounded-xl font-black text-sm uppercase tracking-wide shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2 ${homeOrg.status === 'open'
                                 ? 'bg-[var(--brand-primary)] text-white hover:brightness-110 shadow-[var(--brand-primary)]/30'
                                 : 'bg-gray-100 text-gray-500 border border-gray-200 cursor-pointer hover:bg-gray-200'
                                 }`}
                         >
                             <span className="material-symbols-outlined text-[20px]">restaurant_menu</span>
-                            {org.status === 'open' ? 'Começar Pedido' : 'Ver Cardápio (Fechado)'}
+                            {homeOrg.status === 'open' ? 'Começar Pedido' : 'Ver Cardápio (Fechado)'}
                         </button>
-                        {org.status !== 'open' && (
+                        {homeOrg.status !== 'open' && (
                             <p className="text-center text-[10px] text-gray-400 font-medium mt-2">
                                 A loja está fechada no momento. Você pode navegar mas não pedir.
                             </p>
@@ -179,15 +190,15 @@ export const HomeScreen = () => {
                     {/* Delivery Time */}
                     <div className="bg-white dark:bg-[#1e1e1e] px-3 py-1.5 rounded-full text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5 border border-gray-100 dark:border-white/5 shadow-sm">
                         <span className="material-symbols-outlined text-[16px] text-[var(--brand-primary)]">schedule</span>
-                        Entrega: ~{org.deliveryInfo?.maxTime || '45'} min
+                        Entrega: ~{homeOrg.deliveryInfo?.maxTime || '45'} min
                     </div>
                     {/* Delivery Fee */}
                     <div className="bg-white dark:bg-[#1e1e1e] px-3 py-1.5 rounded-full text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5 border border-gray-100 dark:border-white/5 shadow-sm">
                         <span className="material-symbols-outlined text-[16px] text-green-600">payments</span>
-                        {org.deliveryInfo?.feeText || 'Taxa sob consulta'}
+                        {homeOrg.deliveryInfo?.feeText || 'Taxa sob consulta'}
                     </div>
                     {/* Pickup (Static for now) */}
-                    {org.status === 'open' && (
+                    {homeOrg.status === 'open' && (
                         <div className="bg-white dark:bg-[#1e1e1e] px-3 py-1.5 rounded-full text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5 border border-gray-100 dark:border-white/5 shadow-sm">
                             <span className="material-symbols-outlined text-[16px] text-orange-500">storefront</span>
                             Retirada disponível
@@ -208,7 +219,7 @@ export const HomeScreen = () => {
                                 onClick={() => {
                                     console.log(`Shortcut clicked: ${shortcut.label} (${shortcut.id})`);
 
-                                    // 1. WhatsApp Interception
+                                    // 1. WhatsApp Interception (Already checked in Edge Function? No, mapped here)
                                     if (shortcut.id === 'whatsapp' || shortcut.label.toLowerCase().includes('whatsapp')) {
                                         handleWhatsApp();
                                         return;
@@ -223,7 +234,7 @@ export const HomeScreen = () => {
 
                                     // 3. Combos Interception (Option A: Menu with filter)
                                     if (shortcut.id === 'combos' || shortcut.label.toLowerCase().includes('ofertas')) {
-                                        const target = `/${branding.id || 'foodtruck-hotdog'}/menu?filter=promos`;
+                                        const target = `/${orgSlug || 'foodtruck-hotdog'}/menu?filter=promos`;
                                         navigate(target.replace('//', '/'));
                                         return;
                                     }
@@ -231,7 +242,7 @@ export const HomeScreen = () => {
                                     // 4. Default Navigation (Slug-aware)
                                     if (shortcut.actionType === 'navigate') {
                                         const target = shortcut.actionPayload.startsWith('/')
-                                            ? `/${branding.id || 'foodtruck-hotdog'}${shortcut.actionPayload}`
+                                            ? `/${orgSlug || 'foodtruck-hotdog'}${shortcut.actionPayload}`
                                             : shortcut.actionPayload;
                                         navigate(target.replace('//', '/'));
                                     }
@@ -244,14 +255,12 @@ export const HomeScreen = () => {
                 </div>
 
                 {/* 4.5 Promoções (Carrossel) */}
-                {/* API Integration: Ensure Layout handles empty state naturally */}
-                {/* 4.5 Promoções (Carrossel) */}
                 <div className="mt-8 mb-4">
                     <SectionTitle
                         title="Ofertas & Combos"
                         subtitle="Promoções ativas para você"
                         linkText="Ver todos"
-                        onLinkClick={() => navigate('/menu?filter=promos')}
+                        onLinkClick={() => navigate(`/${orgSlug || 'foodtruck-hotdog'}/menu?filter=promos`)}
                     />
                     <CombosCarousel promos={homeData.promos} />
                 </div>
@@ -263,7 +272,7 @@ export const HomeScreen = () => {
                         {categories.map((cat: any) => (
                             <div
                                 key={cat.id}
-                                onClick={() => navigate(`/menu?category=${cat.id}`)}
+                                onClick={() => navigate(`/${orgSlug || 'foodtruck-hotdog'}/menu?category=${cat.id}`)}
                                 className="bg-white dark:bg-[#1e1e1e] p-4 rounded-xl border border-gray-100 dark:border-white/5 shadow-sm active:scale-95 transition-all cursor-pointer group flex flex-col items-center gap-2 h-28 justify-center relative overflow-hidden"
                             >
                                 <div className="absolute inset-0 bg-gray-50/50 dark:bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -306,9 +315,6 @@ const AccessCard = ({ title, subtitle, icon, onClick, variant = 'default' }: any
             subText: 'text-gray-500 dark:text-gray-400',
             arrow: 'text-gray-300 dark:text-gray-600'
         },
-        // Color variants (reusing 'default' backbone but with colored icon/accents if desired, OR full color cards?)
-        // Prompt says "Ops-like", commonly Ops are white cards with colored icons.
-        // Let's make NON-Primary cards be white cards with colored icons/bg-icons for better hierarchy.
         blue: {
             container: 'bg-white border-gray-100 text-gray-900 shadow-sm hover:border-blue-200 dark:bg-[#1e1e1e] dark:border-white/5 dark:text-white',
             iconBg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
@@ -354,7 +360,6 @@ const AccessCard = ({ title, subtitle, icon, onClick, variant = 'default' }: any
     );
 };
 
-// --- Components ---
 const SectionTitle = ({ title, subtitle, linkText, onLinkClick }: any) => (
     <div className="mb-3 px-1 flex items-end justify-between">
         <div>
@@ -375,6 +380,8 @@ const SectionTitle = ({ title, subtitle, linkText, onLinkClick }: any) => (
 const AbandonedCartBanner = () => {
     const { hasAbandonedCart, cartTotalItems, discardCart } = useAbandonedCart();
     const navigate = useNavigate();
+    const { orgSlug } = useOrg();
+
     if (!hasAbandonedCart) return null;
     return (
         <div className="fixed bottom-20 left-4 right-4 z-40 animate-in slide-in-from-bottom-4">
@@ -387,13 +394,9 @@ const AbandonedCartBanner = () => {
                 </div>
                 <div className="flex gap-2">
                     <button onClick={discardCart} className="px-3 py-1.5 bg-black/20 rounded-lg text-xs font-bold hover:bg-black/30">X</button>
-                    <button onClick={() => navigate('/cart')} className="px-3 py-1.5 bg-white text-orange-700 rounded-lg text-xs font-bold shadow-sm">Ver</button>
+                    <button onClick={() => navigate(`/${orgSlug || 'foodtruck-hotdog'}/cart`)} className="px-3 py-1.5 bg-white text-orange-700 rounded-lg text-xs font-bold shadow-sm">Ver</button>
                 </div>
             </div>
         </div>
     );
 };
-
-// --- Components ---
-// SectionTitle is still used by Categories and AccessCard, so keep it.
-// PromoCard is now replaced, so remove it.

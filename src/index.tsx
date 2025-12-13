@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-// import './index.css'; // Removed as file does not exist locally (using Tailwind CDN)
+import './index.css';
 
 // Note: The original index.tsx didn't import CSS, but usually there is some global CSS.
 // Checking if there is an index.css in root... if not, I might need to create one or remove this import.

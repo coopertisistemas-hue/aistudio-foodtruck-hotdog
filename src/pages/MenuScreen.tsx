@@ -7,12 +7,15 @@ import { fetchMenu } from '../lib/api/menuApi';
 import { Product, Category } from '../types';
 import { analytics } from '../lib/analytics';
 
+import { useOrg } from '../context/OrgContext';
+
 export const MenuScreen = () => {
     const { categoryId, slug } = useParams();
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
     const { addToCart, cart } = useApp();
     const { branding } = useBranding();
+    const { org: contextOrg, orgSlug } = useOrg();
 
     const handleAddToCart = async (product: Product) => {
         console.log('Added to cart:', product.id, product.name);
@@ -36,8 +39,11 @@ export const MenuScreen = () => {
 
         async function load() {
             try {
+                const targetOrgId = contextOrg?.id;
+                if (!targetOrgId) return;
+
                 setLoading(true);
-                const { products: allProducts, categories: allCategories } = await fetchMenu({ q });
+                const { products: allProducts, categories: allCategories } = await fetchMenu(targetOrgId, { q });
 
                 if (isMounted) {
                     setProducts(allProducts);
@@ -57,7 +63,7 @@ export const MenuScreen = () => {
         }
         load();
         return () => { isMounted = false; };
-    }, [q]);
+    }, [q, branding]);
 
     const handleCategoryClick = (catId: string) => {
         setSearchParams(prev => {
@@ -80,7 +86,7 @@ export const MenuScreen = () => {
                 showBack
                 rightElement={
                     <button
-                        onClick={() => navigate(`/${slug || branding.id || 'foodtruck-hotdog'}/cart`)}
+                        onClick={() => navigate(`/${slug || orgSlug || 'foodtruck-hotdog'}/cart`)}
                         className="relative p-2 text-gray-600 dark:text-gray-300 active:scale-95 transition-transform"
                     >
                         <span className="material-symbols-outlined text-2xl">shopping_cart</span>
@@ -158,11 +164,12 @@ export const MenuScreen = () => {
                     )}
 
                     {!loading && displayedProducts.map(product => (
-                        <ProductCard
-                            key={product.id}
-                            product={product}
-                            onAdd={() => handleAddToCart(product)}
-                        />
+                        <div key={product.id}>
+                            <ProductCard
+                                product={product}
+                                onAdd={() => handleAddToCart(product)}
+                            />
+                        </div>
                     ))}
                 </div>
             </main>

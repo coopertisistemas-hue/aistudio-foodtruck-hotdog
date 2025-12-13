@@ -1,7 +1,7 @@
 import { supabase } from '../supabaseClient';
 import { OrgData, Category, Product } from '../../types';
 
-const ORG_ID = import.meta.env.VITE_ORG_ID_FOODTRUCK as string;
+// ORG_ID removed (passed dynamically)
 
 export interface HomeShortcut {
     id: string;
@@ -69,13 +69,14 @@ export interface HomePayload {
     promos: HomePromoCard[];
 }
 
-export async function fetchHomeData(): Promise<HomePayload> {
+export async function fetchHomeData(orgId: string): Promise<HomePayload> {
     if (!supabase) throw new Error('Supabase not configured');
+    if (!orgId) throw new Error('Org ID is required');
 
-    console.log('Fetching home data for org:', ORG_ID);
+    console.log('Fetching home data for org:', orgId);
 
     const { data, error } = await supabase.functions.invoke('readdy-home-data', {
-        body: { org_id: ORG_ID }
+        body: { org_id: orgId }
     });
 
     if (error) {

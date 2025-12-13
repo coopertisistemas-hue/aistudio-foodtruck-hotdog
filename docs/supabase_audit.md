@@ -8,26 +8,14 @@
 ## 1. Tabelas Críticas Analisadas
 
 ### `orgs`
-- **Status**: ✅ Parcialmente Coerente.
-- **Campos Encontrados**: `id`, `slug`, `name`, `accent_color`, `background_video_url`, `background_image_url` (vistos em `supabase_branding.sql`).
-- **Discrepâncias**:
-    - O código (`OrgContext.tsx`) espera campos como `logo_url`, `whatsapp`, `address`, `status`. É necessário confirmar se eles existem na tabela base (que não foi vista por completo nos arquivos SQL parciais, mas é referenciada).
-    - **Ação Recomendada**: Verificar existência de `whatsapp` e `address` na tabela `orgs` em produção.
+- **Status**: ✅ Resolvido (Migration Criada).
+- **Campos**: `logo_url`, `whatsapp`, `address`, `status` adicionados via migration `20251213120000_schema_fixes_f3_1.sql`.
+- **Status Check**: Constraint Check adicionada.
 
 ### `orders`
-- **Status**: ⚠️ Discrepância de Tipos e FKs.
-- **Definição Atual** (via `supabase_orders.sql`):
-    - `id` (uuid)
-    - `org_id` (text) -> ⚠️ Deveria ser UUID e FK para `public.orgs(id)`.
-    - `status` (text)
-    - `total` (numeric)
-    - `payment_method` (text)
-- **Código Espera** (`types.ts`):
-    - `status`: Enum (`Recebido`, `Em Preparo`, etc). O banco usa `text`, o que é aceitável, mas sem check constraint.
-    - `items`: O código junta `orders` e `order_items`.
-- **Ação Recomendada**:
-    - Alterar `org_id` para `uuid` com FK para `orgs(id)`.
-    - Adicionar Check Constraint para `status` se possível, ou garantir validação via Edge Function.
+- **Status**: ✅ Resolvido (Migration Criada).
+- **Correção**: Migration converte `org_id` de text para UUID (sanitizando slugs antigos) e adiciona FK `fk_orders_org`.
+- **Status**: Mantido como text mas indexado. Validação de enum feita via aplicação/Edge Function.
 
 ### `order_items`
 - **Status**: ⚠️ FKs Ausentes.

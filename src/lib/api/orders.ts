@@ -1,14 +1,16 @@
 import { supabase } from '../supabaseClient';
 import { Order, OrderStatus } from '../../types';
 
-const ORG_ID = import.meta.env.VITE_ORG_ID_FOODTRUCK as string || 'foodtruck-hotdog'; // Fallback for dev
+// ORG_ID removed (dynamic)
 
 export interface GetCustomerOrdersParams {
+    orgId: string;
     userId?: string;
     customerPhone?: string;
 }
 
 export interface GetOrderDetailParams {
+    orgId: string;
     orderId: string | number;
     userId?: string;
     customerPhone?: string;
@@ -20,10 +22,13 @@ export async function getCustomerOrders(params: GetCustomerOrdersParams): Promis
         return [];
     }
 
+    // Validate OrgId
+    if (!params.orgId) throw new Error("Org ID is required");
+
     try {
         const { data, error } = await supabase.functions.invoke('public-get-customer-orders', {
             body: {
-                org_id: ORG_ID,
+                org_id: params.orgId,
                 user_id: params.userId,
                 customer_phone: params.customerPhone
             }
@@ -57,7 +62,7 @@ export async function getOrderDetail(params: GetOrderDetailParams): Promise<Orde
     try {
         const { data, error } = await supabase.functions.invoke('public-get-order-detail', {
             body: {
-                org_id: ORG_ID,
+                org_id: params.orgId,
                 order_id: params.orderId,
                 user_id: params.userId,
                 customer_phone: params.customerPhone

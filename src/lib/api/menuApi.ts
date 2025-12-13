@@ -1,7 +1,7 @@
 import { supabase } from '../supabaseClient';
 import { Category, Product } from '../../types';
 
-const ORG_ID = import.meta.env.VITE_ORG_ID_FOODTRUCK as string;
+// ORG_ID removed (passed dynamically)
 
 // Helper to get icon based on category name
 const getCategoryIcon = (name: string): string => {
@@ -46,8 +46,9 @@ export interface MenuFilters {
 let cachedCategories: Category[] | null = null;
 let cachedProducts: Product[] | null = null;
 
-export async function fetchMenu(filters?: MenuFilters) {
+export async function fetchMenu(orgId: string, filters?: MenuFilters) {
     if (!supabase) throw new Error('Supabase not configured');
+    if (!orgId) throw new Error('Org ID is required');
 
     // Bypass cache if filters are present
     const hasFilters = filters && (filters.q || filters.is_combo || filters.is_promotion);
@@ -57,7 +58,7 @@ export async function fetchMenu(filters?: MenuFilters) {
     }
 
     const { data, error } = await supabase.functions.invoke('get-menu', {
-        body: { orgId: ORG_ID, ...filters }
+        body: { orgId: orgId, ...filters }
     });
 
     if (error) {
@@ -85,17 +86,17 @@ export async function fetchMenu(filters?: MenuFilters) {
     return { categories, products };
 }
 
-export async function fetchCategories(): Promise<Category[]> {
-    const { categories } = await fetchMenu();
+export async function fetchCategories(orgId: string): Promise<Category[]> {
+    const { categories } = await fetchMenu(orgId);
     return categories;
 }
 
-export async function fetchProductsByCategory(categoryId: string): Promise<Product[]> {
-    const { products } = await fetchMenu();
+export async function fetchProductsByCategory(orgId: string, categoryId: string): Promise<Product[]> {
+    const { products } = await fetchMenu(orgId);
     return products.filter(p => p.categoryId === categoryId);
 }
 
-export async function fetchProductById(productId: string): Promise<Product | null> {
-    const { products } = await fetchMenu();
+export async function fetchProductById(orgId: string, productId: string): Promise<Product | null> {
+    const { products } = await fetchMenu(orgId);
     return products.find(p => p.id === productId) || null;
 }

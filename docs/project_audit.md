@@ -86,9 +86,9 @@ Baseado nos arquivos SQL e uso do Client:
 
 Pontos de atenção identificados no código:
 
-1.  **Configuração OneSignal**: `src/App.tsx` possui um ID de app hardcoded/placeholder (`YOUR-ONESIGNAL-APP-ID`). Necessita vir de variável de ambiente ou configuração da Org.
+1.  **Configuração OneSignal**: ✅ FIXED. Uses `VITE_ONESIGNAL_APP_ID` with safety check.
 2.  **URLs de Review**: Em `HomeScreen.tsx`, a URL de avaliação está hardcoded ou com TODO para vir do `BrandConfig`.
-3.  **Refatoração Legacy**: Existência de `HomeScreenLegacy.tsx` sugere uma migração recente. Validar se pode ser removido.
+3.  **Refatoração Legacy**: ✅ FIXED. `HomeScreenLegacy.tsx` removed.
 4.  **Types Centralizados**: `src/types.ts` parece conter tipos compartilhados, mas algumas definições podem estar duplicadas dentro de componentes ou contexts.
 5.  **Tratamento de Erros de API**: O Client confia muito nas Edge Functions (caminho feliz). Validar se tratamentos de erro (ex: falha de rede no checkout) estão robustos em todos os pontos.
 

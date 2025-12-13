@@ -54,8 +54,8 @@ This document audits the critical user journeys in the "FoodTruck HotDog" Client
     - *Note*: `CartContext` also has `fetchOrdersApi` (`orderApi.ts`) which queries `orders` table directly.
 - **Data Sources**: `orders`.
 - **Observations**:
-    - **Duplication**: as noted in API Audit, there are two ways to fetch orders. `OrdersScreen` uses the Edge Function.
-    - Identification: Uses `phone` (stored in local storage) or `user_id` to query.
+    - **Unified**: Both `OrdersScreen` and `CartContext` now use the Edge Function `public-get-customer-orders`.
+    - Identification: Uses `phone` (stored in local storage) or `user_id` to query. Consistent across contexts.
 
 ### 2.5. Profile & Auth
 - **Goal**: Manage personal data and addresses.

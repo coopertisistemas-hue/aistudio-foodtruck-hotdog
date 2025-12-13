@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { CartItem, Product, Order } from '../types';
-import { createOrderApi, fetchOrdersApi, CreateOrderParams } from '../lib/api/orderApi';
+import { createOrderApi, CreateOrderParams } from '../lib/api/orderApi';
+import { getCustomerOrders } from '../lib/api/orders';
 import { supabase } from '../lib/supabaseClient';
 
 import { useOrg } from './OrgContext';
@@ -131,14 +132,24 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
     const refreshOrders = async () => {
         try {
-            if (user?.id) {
-                const data = await fetchOrdersApi(user.id);
+            if (!org?.id) return;
+
+            // Priority: User ID > Stored Phone > Guest
+            const phone = localStorage.getItem('last_customer_phone');
+
+            if (user?.id || phone) {
+                const data = await getCustomerOrders({
+                    orgId: org.id,
+                    userId: user?.id,
+                    customerPhone: phone || undefined
+                });
                 setOrders(data);
             } else {
                 setOrders([]);
             }
         } catch (error) {
             console.error("Failed to fetch orders", error);
+            setOrders([]);
         }
     };
 
@@ -251,7 +262,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             loyaltyAmount: loyaltyAmount
         };
 
-        const newId = await createOrderApi(params);
+        const newId = await createOrderApi(org!.id, params);
 
         clearCart();
         refreshOrders();

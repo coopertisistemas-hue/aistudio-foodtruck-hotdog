@@ -12,8 +12,8 @@
 | `homeApi.ts` | `fetchHomeData` | `readdy-home-data` | ✅ Em uso. Traz dados da Home + Tema + Produtos. |
 | `menuApi.ts` | `fetchMenu` | `get-menu` | ✅ Em uso. Cache local implementado. |
 | `orderApi.ts` | `createOrderApi` | `create-order` | ✅ Em uso. Criação transacional. |
-| `orderApi.ts` | `fetchOrdersApi` | Tabela `orders` (Select direto) | ✅ **Em uso pelo CartContext**. Filtra por `user_id`. |
-| `orders.ts` | `getCustomerOrders` | `public-get-customer-orders` | ⚠️ **Em uso pela OrdersScreen**. Duplicidade funcional com `fetchOrdersApi`. |
+| `orderApi.ts` | `fetchOrdersApi` | Tabela `orders` (Select direto) | ✅ **Duplicidade de Busca de Pedidos**: RESOLVIDO. `CartContext` agora usa `getCustomerOrders` (wrapper da Edge Function) assim como `OrdersScreen`. `fetchOrdersApi` foi depreciado. |
+| `orders.ts` | `getCustomerOrders` | `public-get-customer-orders` | ✅ **Em uso pela OrdersScreen e CartContext**. Unificado. |
 | `orders.ts` | `getOrderDetail` | `public-get-order-detail` | ⚠️ Verificar uso. O front geralmente não detalha pedido via função pública, mas via ID direto. |
 | `branding.ts` | *Gerenciamento de Tema* | Tabela `orgs` | ✅ Contexto de Branding. |
 | `customers.ts` | `identifyCustomer` | Tabela `customers` | ✅ Identificação no checkout. |
@@ -48,8 +48,9 @@ Detectei que **ambas** as abordagens estão em uso:
 
 **Risco**: Inconsistência. Se a Edge Function aplicar filtros diferentes do Select direto, o usuário vê coisas diferentes no histórico vs contexto.
 
-### ⚠️ Campos de Org
-`homeApi.ts` usa constantes globais `VITE_ORG_ID_FOODTRUCK` para `org_id`. Isso funciona para single-tenant build, mas em multi-tenant real deveria vir dinamicamente do `OrgContext`.
+### ✅ Hardcoded Tenant ID (RESOLVED)
+- **Status**: Fixed. `VITE_ORG_ID_FOODTRUCK` usage removed from `homeApi`, `menuApi`, `orderApi`, and `orders.ts`.
+- **Implementation**: All APIs now accept `orgId` as a parameter. Consumers (Screens/Contexts) pass `branding.id` or `org.id`.
 
 ---
 

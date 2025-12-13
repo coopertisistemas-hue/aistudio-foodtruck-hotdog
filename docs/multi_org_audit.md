@@ -30,18 +30,14 @@ This document audits the Multi-Establishment capability of the "Delivery Connect
 
 ## 3. Critical Findings & Risks
 
-### 🔴 1. Hardcoded API Org ID (Critical)
-- **File**: `src/lib/api/homeApi.ts` (and possibly others).
-- **Issue**: `const ORG_ID = import.meta.env.VITE_ORG_ID_FOODTRUCK as string;`
-- **Impact**: While the *UI* looks like it's multi-tenant (different colors/logos), the *Data* (categories, products, orders) is being fetched/created for the **FoodTruck ID** hardcoded in the build, regardless of the URL slug.
-- **Fix**: All API clients must accept `orgId` as a parameter, passed down from `OrgContext`.
+### 🟢 1. Hardcoded API Org ID (Resolved)
+- **Status**: ✅ Fixed.
+- **Action**: Refactored `homeApi.ts`, `menuApi.ts`, `orderApi.ts`, and `orders.ts` to accept `orgId`. Removed `import.meta.env.VITE_ORG_ID_FOODTRUCK`.
 
-### 🔴 2. Navigation Broken via Branding ID
-- **File**: `src/components/MonetizationBanner.tsx`
-- **Issue**: Uses `branding.id` to construct internal routes (`/${branding.id}/menu`).
-- **Context**: `branding.id` comes from the database UUID (e.g., `123e4567...`), but the Router expects a **Slug** (e.g., `foodtruck-hotdog`).
-- **Impact**: Clicking a banner will likely lead to a 404 page (`/123e4567-e89b.../menu`) instead of the correct store page.
-- **Fix**: `BrandingContext` (or `OrgContext`) should provide the `slug` for navigation construction.
+### 🟢 2. Navigation Broken via Branding ID (Resolved)
+- **Status**: ✅ Fixed.
+- **Action**: Updated `MonetizationBanner.tsx`, `HomeScreen.tsx`, and `MenuScreen.tsx` to use `orgSlug` from `OrgContext` for constructing internal routes. Eliminated fallback to `branding.id` (UUID).
+
 
 ### 🟡 3. Double Fetching
 - **Issue**: `OrgContext` fetches `orgs`. `BrandingContext` also fetches `orgs` (to get colors).

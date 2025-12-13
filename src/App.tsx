@@ -28,18 +28,22 @@ const AppContent = () => {
     React.useEffect(() => {
         const runOneSignal = async () => {
             try {
+                const appId = import.meta.env.VITE_ONESIGNAL_APP_ID;
+                if (!appId) {
+                    console.warn("OneSignal App ID not set. Skipping initialization.");
+                    return;
+                }
+
                 await OneSignal.init({
-                    appId: "YOUR-ONESIGNAL-APP-ID", // TODO: Replace with real App ID
+                    appId,
                     allowLocalhostAsSecureOrigin: true,
-                    notifyButton: {
-                        enable: true,
-                    },
                 });
                 OneSignal.Slidedown.promptPush();
             } catch (error) {
                 console.error("OneSignal init error:", error);
             }
         };
+
         runOneSignal();
     }, []);
 

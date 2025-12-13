@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MonetizationSlot } from '../lib/api/monetization';
 import { useBranding } from '../context/BrandingContext';
+import { useOrg } from '../context/OrgContext';
 
 interface MonetizationBannerProps {
     slot: MonetizationSlot;
@@ -11,27 +12,22 @@ interface MonetizationBannerProps {
 export const MonetizationBanner: React.FC<MonetizationBannerProps> = ({ slot, className = '' }) => {
     const navigate = useNavigate();
     const { branding } = useBranding();
+    const { orgSlug } = useOrg();
 
     if (!slot.is_active) return null;
 
     const handleClick = () => {
         if (slot.cta_type === 'internal_route') {
-            // Ensure route starts with branding id/slug if needed?
-            // Usually internal routes are relative to branding root or absolute.
-            // If the value is '/menu', it might need '/foodtruck-hotdog/menu'.
-            // Let's assume the admin enters the full relative path or we prepend branding if it strictly starts with /
-
-            // Heuristic: If it starts with '/', prepending branding might be safer if we follow the app structure.
-            // But let's assume the value is the full link for now, or use logic.
-            // Actually, if it's 'menu', we should go to `/${branding.id}/menu`.
-
+            // Use orgSlug for clean URLs
             let path = slot.cta_value;
-            if (path.startsWith('/') && !path.startsWith(`/${branding.id}`)) {
-                path = `/${branding.id}${path}`;
-            } else if (!path.startsWith('/')) {
-                path = `/${branding.id}/${path}`;
-            }
-            navigate(path);
+            // Remove leading slash if present to avoid double slash when appending
+            const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+
+            // Construct path: /:slug/:path
+            const targetPath = `/${orgSlug || branding.id || 'foodtruck-hotdog'}/${cleanPath}`;
+
+            console.log('Navigating to:', targetPath);
+            navigate(targetPath);
         } else if (slot.cta_type === 'whatsapp') {
             // construct whatsapp link
             const phone = slot.cta_value.replace(/\D/g, '');

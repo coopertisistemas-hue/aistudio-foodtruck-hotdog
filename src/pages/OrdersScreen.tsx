@@ -21,8 +21,10 @@ export const OrdersScreen = () => {
     const loadOrders = async () => {
         setLoading(true);
         try {
+            if (!branding.id) return;
             const phone = localStorage.getItem('last_customer_phone');
             const data = await getCustomerOrders({
+                orgId: branding.id,
                 userId: user?.id,
                 customerPhone: phone || undefined
             });

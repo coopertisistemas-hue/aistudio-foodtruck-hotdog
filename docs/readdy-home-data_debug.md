@@ -1,17 +1,20 @@
-# Debug readdy-home-data (Stub Mode)
+# Readdy Home Data (Mode: Production)
 
 ## Objetivo
-Diagnosticar o erro 500 na Edge Function `readdy-home-data`. A função foi colocada em modo "Stub" (simulação) para retornar sempre `200 OK` e logar o payload recebido.
+## Objetivo
+A Edge Function `readdy-home-data` é o agregador oficial da Home. Ela busca dados de branding, categorias, destaques e status da loja em uma única chamada otimizada.
 
-## Estado Atual
-O arquivo `supabase/functions/readdy-home-data/index.ts` está com lógica simplificada:
+6. Status Atual
+O arquivo `supabase/functions/readdy-home-data/index.ts` agora contém a lógica de produção:
 - Lê o body do request.
-- Loga `org_id` e body no console.
-- Retorna JSON estático:
+- Busca `orgs` (com validação completa de campos).
+- Busca `monetization_slots` para Hero.
+- Busca `categories` e `products` (promos).
+- Retorna JSON estruturado.
 ```json
 {
   "ok": true,
-  "source": "readdy-home-data-stub",
+  "mode": "production",
   "org_id": "...",
   "org": { ... }
 }
@@ -19,7 +22,7 @@ O arquivo `supabase/functions/readdy-home-data/index.ts` está com lógica simpl
 
 ## Como Testar (Manual)
 
-### 1. Deploy da Função Stub
+### 1. Deploy da Função (Versão Produção)
 Execute no terminal:
 ```bash
 supabase functions deploy readdy-home-data --no-verify-jwt

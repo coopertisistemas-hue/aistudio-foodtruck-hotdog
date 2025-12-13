@@ -1,7 +1,7 @@
 import { supabase } from '../supabaseClient';
 import { Order, CartItem, OrderStatus } from '../../types';
 
-const ORG_ID = import.meta.env.VITE_ORG_ID_FOODTRUCK as string;
+// ORG_ID removed (dynamic)
 
 export interface CreateOrderParams {
     items: CartItem[];
@@ -16,11 +16,12 @@ export interface CreateOrderParams {
     loyaltyAmount?: number;
 }
 
-export async function createOrderApi(params: CreateOrderParams): Promise<string> {
+export async function createOrderApi(orgId: string, params: CreateOrderParams): Promise<string> {
     if (!supabase) throw new Error('Supabase not configured');
+    if (!orgId) throw new Error('Org ID is required');
 
     const orderPayload = {
-        org_id: ORG_ID,
+        org_id: orgId,
         status: OrderStatus.RECEIVED,
         total: params.total,
         customer_name: params.customer?.name,
@@ -54,7 +55,11 @@ export async function createOrderApi(params: CreateOrderParams): Promise<string>
     return data.orderId;
 }
 
-export async function fetchOrdersApi(userId?: string): Promise<Order[]> {
+/**
+ * @deprecated Use `getCustomerOrders` from `orders.ts` instead.
+ * This function uses a direct DB connection which is being phrased out in favor of Edge Functions.
+ */
+export async function fetchOrdersApi(orgId: string, userId?: string): Promise<Order[]> {
     if (!supabase) throw new Error('Supabase not configured');
 
     if (!userId) return []; // Client app: never return orders without user context
@@ -65,7 +70,7 @@ export async function fetchOrdersApi(userId?: string): Promise<Order[]> {
             *,
             items:order_items(*)
         `)
-        .eq('org_id', ORG_ID)
+        .eq('org_id', orgId)
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
