@@ -36,7 +36,7 @@ const AppContent = () => {
 
                 await OneSignal.init({
                     appId,
-                    allowLocalhostAsSecureOrigin: true,
+                    allowLocalhostAsSecureOrigin: import.meta.env.DEV,
                 });
                 OneSignal.Slidedown.promptPush();
             } catch (error) {

@@ -17,6 +17,7 @@ export const HomeScreen = () => {
 
     const [homeData, setHomeData] = useState<HomePayload | null>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     // Current Date Context
     const dateStr = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -39,8 +40,9 @@ export const HomeScreen = () => {
             try {
                 const payload = await fetchHomeData(currentOrgId);
                 setHomeData(payload);
-            } catch (err) {
+            } catch (err: any) {
                 console.error('HomeScreen load error:', err);
+                setError(err.message || 'Erro ao carregar dados da loja');
             } finally {
                 setLoading(false);
             }
@@ -58,6 +60,29 @@ export const HomeScreen = () => {
             console.warn('No WhatsApp number configured');
         }
     };
+
+    if (error) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6 text-center">
+                <div className="max-w-md w-full bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
+                    <div className="mx-auto size-20 bg-red-50 rounded-full flex items-center justify-center mb-6">
+                        <span className="material-symbols-outlined text-4xl text-red-500">error_outline</span>
+                    </div>
+                    <h2 className="text-2xl font-black text-gray-800 mb-2">Ops! Algo deu errado</h2>
+                    <p className="text-gray-500 mb-8 leading-relaxed">
+                        Não foi possível carregar as informações do estabelecimento.<br />
+                        <span className="text-xs opacity-70 mt-1 block font-mono bg-gray-100 p-1 rounded selection:bg-red-100">{error}</span>
+                    </p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="w-full py-3.5 px-4 bg-gray-900 hover:bg-black text-white font-bold rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-gray-200"
+                    >
+                        Tentar Novamente
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     if (loading) {
         return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="animate-spin size-8 border-4 border-gray-300 border-t-blue-600 rounded-full"></div></div>;
