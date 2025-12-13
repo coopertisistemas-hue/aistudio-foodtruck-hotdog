@@ -69,6 +69,44 @@ export interface HomePayload {
     promos: HomePromoCard[];
 }
 
+export interface OrgSummary {
+    id: string;
+    slug: string;
+    name: string;
+    category: string;
+    rating: number;
+    logo_url?: string;
+    background_image_url?: string;
+    status: 'open' | 'closed';
+    delivery_time: string;
+    min_order: string;
+}
+
+export async function fetchOrgs(): Promise<OrgSummary[]> {
+    // Check clients
+    if (!supabase) throw new Error('Supabase client not initialized');
+
+    const { data: orgs, error } = await supabase
+        .from('orgs')
+        .select('*');
+
+    if (error) throw error;
+
+    // Map to summary (in real app, you might want to join with ratings/delivery info tables)
+    return (orgs || []).map((org: any) => ({
+        id: org.id,
+        slug: org.slug,
+        name: org.name,
+        category: 'Lanches & Bebidas', // Schema might accept this field later, hardcoded for now or fetch if exists
+        rating: 4.9, // Placeholder or fetch from ratings table
+        logo_url: org.logo_url, // Now fetching from DB
+        background_image_url: org.background_image_url,
+        status: org.status || 'open',
+        delivery_time: '30-45 min',  // Needs to be in DB to be dynamic
+        min_order: 'R$ 20,00'        // Needs to be in DB to be dynamic
+    }));
+}
+
 export async function fetchHomeData(orgId: string): Promise<HomePayload> {
     if (!supabase) throw new Error('Supabase not configured');
     if (!orgId) throw new Error('Org ID is required');
