@@ -13,3 +13,5 @@ export * from './WhatsAppFloatingButton';
 export * from './SearchBar';
 export * from './SuggestionsSection';
 export * from './TipsSection';
+export * from './MonetizationBanner';
+export * from './AppFooter';

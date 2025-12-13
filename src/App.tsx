@@ -4,6 +4,7 @@ import { AppProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import { BrandingProvider } from './context/BrandingContext';
 import { FavoritesProvider } from './context/FavoritesContext';
+import { OrgProvider } from './context/OrgContext';
 import { BottomNav, FloatingCart, MobileContainer } from './components';
 import {
     SplashScreen,
@@ -60,7 +61,13 @@ const AppContent = () => {
             floatingCart={<FloatingCart />}
         >
             <Routes>
-                <Route path="/" element={<Navigate to="/foodtruck/home" replace />} />
+                <Route path="/" element={
+                    <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
+                        <h1 className="text-xl font-bold mb-4">Delivery Connect</h1>
+                        <p className="mb-4">Selecione um estabelecimento:</p>
+                        <a href="/#/foodtruck-hotdog/home" className="text-blue-500 underline">FoodTruck HotDog</a>
+                    </div>
+                } />
                 <Route path="/:slug">
                     <Route index element={<Navigate to="home" replace />} />
                     <Route path="splash" element={<SplashScreen />} />
@@ -85,18 +92,26 @@ const AppContent = () => {
 
 
 
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+// ... (existing imports)
+
 export default function App() {
     return (
         <HashRouter>
-            <BrandingProvider>
-                <AuthProvider>
-                    <FavoritesProvider>
-                        <AppProvider>
-                            <AppContent />
-                        </AppProvider>
-                    </FavoritesProvider>
-                </AuthProvider>
-            </BrandingProvider>
+            <ErrorBoundary>
+                <OrgProvider>
+                    <BrandingProvider>
+                        <AuthProvider>
+                            <FavoritesProvider>
+                                <AppProvider>
+                                    <AppContent />
+                                </AppProvider>
+                            </FavoritesProvider>
+                        </AuthProvider>
+                    </BrandingProvider>
+                </OrgProvider>
+            </ErrorBoundary>
         </HashRouter>
     );
 }

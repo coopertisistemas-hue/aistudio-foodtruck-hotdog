@@ -84,9 +84,5 @@ export const useBranding = () => {
     return context;
 };
 
-// Compatibility hook for legacy code expecting 'useOrg'
-// In the future, this should be deprecated or separate from Visual Branding
-export const useOrg = () => {
-    const { branding, loading, error } = useBranding();
-    return { org: branding, loading, error };
-};
+// Compatibility hook removed/deprecated in favor of OrgContext
+// export const useOrg = () => { ... }

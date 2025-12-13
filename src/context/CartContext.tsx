@@ -3,7 +3,7 @@ import { CartItem, Product, Order } from '../types';
 import { createOrderApi, fetchOrdersApi, CreateOrderParams } from '../lib/api/orderApi';
 import { supabase } from '../lib/supabaseClient';
 
-import { useOrg } from './BrandingContext';
+import { useOrg } from './OrgContext';
 import { useAuth } from './AuthContext';
 
 interface AppContextType {
@@ -35,11 +35,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const [sharedCartId, setSharedCartId] = useState<string | null>(null);
     const [guestName, setGuestName] = useState<string>('Convidado');
 
-    const cartKey = `cart_${org.id}`;
+    const cartKey = org ? `cart_${org.id}` : null;
 
     // Load local cart from local storage on mount or when org changes
     useEffect(() => {
         if (sharedCartId) return; // Don't load local cart if in shared mode
+        if (!cartKey) return; // Wait for org
 
         const savedCart = localStorage.getItem(cartKey);
         if (savedCart) {
@@ -62,11 +63,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             setCart([]);
         }
         refreshOrders();
-    }, [org.id, sharedCartId]);
+    }, [cartKey, sharedCartId]);
 
     // Save local cart to local storage whenever it changes
     useEffect(() => {
         if (sharedCartId) return; // Don't save shared cart to local storage
+        if (!cartKey) return;
 
         const payload = {
             items: cart,
@@ -141,6 +143,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     };
 
     const createSharedCart = async () => {
+        if (!org) throw new Error("Organization not loaded");
         const { data, error } = await supabase
             .from('shared_carts')
             .insert({
